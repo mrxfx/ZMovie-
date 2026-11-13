@@ -39,7 +39,7 @@ const STORAGE_KEYS = {
 const DEFAULT_PREFERENCES: UserPreferences = {
   theme: 'light',
   language: 'en-US',
-  autoplayNext: true,
+  autoplayNext: false,
   preferredAnimeAudio: 'sub',
   saveSearchHistory: true,
   saveWatchHistory: true,
@@ -296,7 +296,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
           const next: UserPreferences = {
             theme: data.theme === 'dark' ? 'dark' : 'light',
             language: String(data.language || 'en-US'),
-            autoplayNext: Boolean(data.autoplayNext ?? true),
+            autoplayNext: Boolean(data.autoplayNext ?? false),
             preferredAnimeAudio: data.preferredAnimeAudio === 'dub' ? 'dub' : 'sub',
             saveSearchHistory: Boolean(data.saveSearchHistory ?? true),
             saveWatchHistory: Boolean(data.saveWatchHistory ?? true),

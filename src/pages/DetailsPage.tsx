@@ -16,6 +16,7 @@ import { useLibrary } from '../context/LibraryContext';
 import { useAdminCatalog } from '../context/AdminCatalogContext';
 import { createCanonicalMediaId } from '../utils/watchProgress';
 import { GlassBadge, GlassButton, GlassModal, GlassPanel } from '../components/glass';
+import { getMediaWatchRoute, getShortTypeCode } from '../utils/mediaRoutes';
 import { MediaCarousel } from '../components/MediaCarousel';
 import { CatalogNoticeBanner, ErrorState, HeroSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -42,7 +43,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   useSeoMetadata({
     title: details ? `${details.title} (${details.releaseYear || 'Details'}) – ZyvoMovie` : 'Details – ZyvoMovie',
     description: details?.overview?.slice(0, 155) || 'View synopsis, cast, episodes, and streaming options on ZyvoMovie.',
-    path: `/${mediaType}/${id}`,
+    path: `/${getShortTypeCode(mediaType)}/${id}`,
   });
 
   const loadDetails = async () => {
@@ -61,7 +62,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
       return;
     }
 
-    if (id.startsWith('adm_') && loadingAdminCatalog) {
+    if (!/^\d+$/.test(id.trim()) && loadingAdminCatalog) {
       setLoading(true);
       return;
     }
@@ -129,18 +130,13 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   const canonicalId = createCanonicalMediaId(mediaType, details.id);
   const saved = isInWatchlist(canonicalId);
   const existingProgress = watchProgress.find((p) => p.mediaId === canonicalId);
-  const rawWatchId =
-    details.source === 'admin-firestore'
-      ? details.id
-      : mediaType === 'anime'
-        ? details.malId ?? details.id.replace(/^anime_/, '')
-        : details.tmdbId ?? details.id.replace(/^(movie|tv)_/, '');
-  const watchPath =
+  const watchQuery =
     mediaType === 'tv'
-      ? `/watch/tv/${rawWatchId}?s=${existingProgress?.season || selectedSeason}&e=${existingProgress?.episode || 1}`
+      ? `?s=${existingProgress?.season || selectedSeason}&e=${existingProgress?.episode || 1}`
       : mediaType === 'anime'
-        ? `/watch/anime/${rawWatchId}?e=${existingProgress?.episode || 1}&audio=${existingProgress?.subOrDub || preferences.preferredAnimeAudio}`
-        : `/watch/movie/${rawWatchId}`;
+        ? `?e=${existingProgress?.episode || 1}&audio=${existingProgress?.subOrDub || preferences.preferredAnimeAudio}`
+        : '';
+  const watchPath = getMediaWatchRoute(details, watchQuery);
 
   const trailer = details.videos.find((v) => v.type === 'Trailer') || details.videos[0];
 
@@ -335,10 +331,11 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {episodes.slice(0, 24).map((ep) => {
-                const epWatchUrl =
+                const epWatchQuery =
                   mediaType === 'tv'
-                    ? `/watch/tv/${rawWatchId}?s=${selectedSeason}&e=${ep.episodeNumber}`
-                    : `/watch/anime/${rawWatchId}?e=${ep.episodeNumber}&audio=${preferences.preferredAnimeAudio}`;
+                    ? `?s=${selectedSeason}&e=${ep.episodeNumber}`
+                    : `?e=${ep.episodeNumber}&audio=${preferences.preferredAnimeAudio}`;
+                const epWatchUrl = getMediaWatchRoute(details, epWatchQuery);
                 return (
                   <Link
                     key={`${ep.seasonNumber}-${ep.episodeNumber}`}

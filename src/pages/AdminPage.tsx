@@ -24,6 +24,7 @@ import {
 } from '../context/AdminCatalogContext';
 import type { AdminCatalogItem, MediaType } from '../types/media';
 import { compressImageFileToDataUrl } from '../utils/imageUpload';
+import { extractShortSlug, getShortTypeCode } from '../utils/mediaRoutes';
 import { GlassBadge, GlassButton, GlassModal, GlassPanel } from '../components/glass';
 import { EmptyState, GridSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -873,7 +874,7 @@ export function AdminPage() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-start justify-between gap-2">
                         <Link
-                          to={`/${item.mediaType}/${item.itemId}`}
+                          to={`/${getShortTypeCode(item.mediaType)}/${extractShortSlug(item.mediaType, item.itemId, item.tmdbId, item.malId)}`}
                           className="font-display text-sm font-bold text-white hover:text-[#E50914] line-clamp-1"
                         >
                           {item.title}
@@ -895,7 +896,7 @@ export function AdminPage() {
 
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         <Link
-                          to={`/watch/${item.mediaType}/${item.itemId}`}
+                          to={`/w/${getShortTypeCode(item.mediaType)}/${extractShortSlug(item.mediaType, item.itemId, item.tmdbId, item.malId)}`}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-[#E50914] hover:underline"
                         >
                           <Play className="w-3 h-3 fill-current" />

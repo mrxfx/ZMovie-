@@ -58,18 +58,21 @@ test('buildVidLinkUrl builds movie, tv, and anime URLs with required VidLink par
     subtitleLabel: 'English',
   });
   assert.ok(movie.url?.startsWith('https://vidlink.pro/movie/550?'));
-  assert.ok(movie.url?.includes('primaryColor=E50914'));
-  assert.ok(movie.url?.includes('secondaryColor=EEEEEE'));
-  assert.ok(movie.url?.includes('iconColor=FFFFFF'));
+  assert.ok(movie.url?.includes('primaryColor=ff0000'));
+  assert.ok(movie.url?.includes('secondaryColor=a2a2a2'));
+  assert.ok(movie.url?.includes('iconColor=eefdec'));
   assert.ok(movie.url?.includes('icons=vid'));
   assert.ok(movie.url?.includes('player=jw'));
   assert.ok(movie.url?.includes('startAt=95'));
   assert.ok(movie.url?.includes('sub_label=English'));
   assert.ok(movie.url?.includes('autoplay=false'));
-  assert.ok(movie.url?.includes('nextbutton=true'));
+  assert.ok(movie.url?.includes('nextbutton=false'));
 
   const tv = buildVidLinkUrl({ mediaType: 'tv', tmdbId: 1396, season: 2, episode: 5 });
   assert.ok(tv.url?.startsWith('https://vidlink.pro/tv/1396/2/5?'));
+  assert.ok(tv.url?.includes('icons=default'));
+  assert.ok(tv.url?.includes('player=default'));
+  assert.ok(tv.url?.includes('nextbutton=false'));
 
   const anime = buildVidLinkUrl({
     mediaType: 'anime',

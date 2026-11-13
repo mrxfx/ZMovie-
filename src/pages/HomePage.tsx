@@ -15,6 +15,7 @@ import type { HomeCatalogResponse, MediaSummary } from '../types/media';
 import { useLibrary } from '../context/LibraryContext';
 import { useAdminCatalog } from '../context/AdminCatalogContext';
 import { createCanonicalMediaId, formatPlaybackTime } from '../utils/watchProgress';
+import { getStoredMediaWatchRoute } from '../utils/mediaRoutes';
 import {
   GlassBadge,
   GlassButton,
@@ -487,10 +488,6 @@ export function HomePage() {
                 {activeContinueWatching.length > 0 ? (
                   <div className="space-y-2.5">
                     {activeContinueWatching.map((item) => {
-                      const rawId =
-                        item.mediaType === 'anime'
-                          ? item.malId ?? item.mediaId.replace(/^anime_/, '')
-                          : item.tmdbId ?? item.mediaId.replace(/^(movie|tv)_/, '');
                       const watchQuery =
                         item.mediaType === 'tv' && item.season && item.episode
                           ? `?s=${item.season}&e=${item.episode}`
@@ -500,7 +497,7 @@ export function HomePage() {
                       return (
                         <Link
                           key={item.mediaId}
-                          to={`/watch/${item.mediaType}/${rawId}${watchQuery}`}
+                          to={getStoredMediaWatchRoute(item, watchQuery)}
                           className="group flex items-center gap-3 p-2 rounded-2xl hover:bg-white/10 transition-colors"
                         >
                           <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 shrink-0 border border-white/15">

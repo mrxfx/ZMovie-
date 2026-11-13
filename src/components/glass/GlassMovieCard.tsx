@@ -6,31 +6,9 @@ import { useLibrary } from '../../context/LibraryContext';
 import { createCanonicalMediaId } from '../../utils/watchProgress';
 import { GlassBadge } from './GlassBadge';
 
-export function getMediaDetailRoute(
-  media: Pick<MediaSummary, 'mediaType' | 'id' | 'tmdbId' | 'malId' | 'source'>
-) {
-  if (media.source === 'admin-firestore') {
-    return `/${media.mediaType}/${media.id}`;
-  }
-  const rawId =
-    media.mediaType === 'anime'
-      ? media.malId ?? media.id.replace(/^anime_/, '')
-      : media.tmdbId ?? media.id.replace(/^(movie|tv)_/, '');
-  return `/${media.mediaType}/${rawId}`;
-}
+import { getMediaDetailRoute, getMediaWatchRoute } from '../../utils/mediaRoutes';
 
-export function getMediaWatchRoute(
-  media: Pick<MediaSummary, 'mediaType' | 'id' | 'tmdbId' | 'malId' | 'source'>
-) {
-  if (media.source === 'admin-firestore') {
-    return `/watch/${media.mediaType}/${media.id}`;
-  }
-  const rawId =
-    media.mediaType === 'anime'
-      ? media.malId ?? media.id.replace(/^anime_/, '')
-      : media.tmdbId ?? media.id.replace(/^(movie|tv)_/, '');
-  return `/watch/${media.mediaType}/${rawId}`;
-}
+export { getMediaDetailRoute, getMediaWatchRoute };
 
 export function GlassMovieCard({
   media,

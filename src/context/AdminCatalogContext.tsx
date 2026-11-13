@@ -240,6 +240,7 @@ export function AdminCatalogProvider({ children }: { children: React.ReactNode }
       return adminItems.find((item) => {
         if (item.mediaType !== mediaType) return false;
         if (item.itemId === cleanId) return true;
+        if (item.itemId.startsWith('adm_') && item.itemId.endsWith(`_${cleanId}`)) return true;
         const numeric = Number(cleanId);
         if (Number.isInteger(numeric) && numeric > 0) {
           if (mediaType === 'anime' && item.malId === numeric) return true;
@@ -263,8 +264,9 @@ export function AdminCatalogProvider({ children }: { children: React.ReactNode }
         throw new Error('Your administrator email must be verified before publishing.');
       }
 
-      const randomSuffix = Math.random().toString(36).slice(2, 7);
-      const itemId = `adm_${input.mediaType}_${Date.now()}_${randomSuffix}`;
+      const shortPrefix = input.mediaType === 'tv' ? 't' : input.mediaType === 'anime' ? 'a' : 'm';
+      const shortCode = Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+      const itemId = `${shortPrefix}${shortCode}`;
       const path = `catalogItems/${itemId}`;
 
       const cleanTitle = input.title.trim().slice(0, 200);

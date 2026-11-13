@@ -27,6 +27,7 @@ import {
 } from '../utils/playerEvents';
 import { createCanonicalMediaId, formatPlaybackTime } from '../utils/watchProgress';
 import { GlassButton, GlassPanel, GlassPlayerControls } from '../components/glass';
+import { getShortTypeCode } from '../utils/mediaRoutes';
 import { ErrorState, HeroSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
@@ -34,8 +35,10 @@ const PROVIDER_CONSENT_KEY = 'zyvomovie_vidlink_authorized_v1';
 const VIDLINK_PROGRESS_STORAGE_KEY = 'vidLinkProgress';
 
 export function WatchPlayerPage() {
-  const { type, id = '' } = useParams<{ type: MediaType; id: string }>();
-  const mediaType: MediaType = type === 'tv' || type === 'anime' ? type : 'movie';
+  const { type, id = '' } = useParams<{ type: string; id: string }>();
+  const mediaType: MediaType =
+    type === 'tv' || type === 't' ? 'tv' : type === 'anime' || type === 'a' ? 'anime' : 'movie';
+  const shortTypeCode = getShortTypeCode(mediaType);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -103,7 +106,7 @@ export function WatchPlayerPage() {
   useSeoMetadata({
     title: details ? `Watch ${details.title} – ZyvoMovie` : 'Watch Player – ZyvoMovie',
     description: 'ZyvoMovie responsive player with VidLink customization and Continue Watching sync.',
-    path: `/watch/${mediaType}/${id}`,
+    path: `/w/${shortTypeCode}/${id}`,
   });
 
   useEffect(() => {
@@ -117,7 +120,7 @@ export function WatchPlayerPage() {
       return;
     }
 
-    if (id.startsWith('adm_') && loadingAdminCatalog) {
+    if (!/^\d+$/.test(id.trim()) && loadingAdminCatalog) {
       setLoading(true);
       return;
     }
@@ -171,7 +174,7 @@ export function WatchPlayerPage() {
     title: true,
     poster: true,
     autoplay: false,
-    nextbutton: preferences.autoplayNext,
+    nextbutton: false,
     startAt: startAtSeconds,
     subtitleUrl: appliedSubtitle || undefined,
     subtitleLabel: appliedSubtitleLabel || undefined,
@@ -415,7 +418,7 @@ export function WatchPlayerPage() {
       {/* Floating Glass Top Bar */}
       <GlassPanel variant="default" padding="sm" className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <GlassButton variant="glass" size="sm" to={`/${mediaType}/${id}`}>
+          <GlassButton variant="glass" size="sm" to={`/${shortTypeCode}/${id}`}>
             <ArrowLeft className="w-4 h-4" />
             Back to Details
           </GlassButton>
@@ -492,7 +495,7 @@ export function WatchPlayerPage() {
                 on the server, assign a TMDB/MAL ID in the Admin Panel, or browse live anime records.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-                <GlassButton variant="primary" size="md" to={`/${mediaType}/${id}`}>
+                <GlassButton variant="primary" size="md" to={`/${shortTypeCode}/${id}`}>
                   Return to Details
                 </GlassButton>
                 <GlassButton variant="darkGlass" size="md" to="/settings">
@@ -517,7 +520,7 @@ export function WatchPlayerPage() {
                 <GlassButton variant="primary" size="lg" onClick={authorizeProvider}>
                   Authorize & Load VidLink Player
                 </GlassButton>
-                <GlassButton variant="darkGlass" size="lg" to={`/${mediaType}/${id}`}>
+                <GlassButton variant="darkGlass" size="lg" to={`/${shortTypeCode}/${id}`}>
                   View Details & Trailer Instead
                 </GlassButton>
               </div>
@@ -561,7 +564,7 @@ export function WatchPlayerPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <a
-              href={typeof window !== 'undefined' ? window.location.href : `/watch/${mediaType}/${id}`}
+              href={typeof window !== 'undefined' ? window.location.href : `/w/${shortTypeCode}/${id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#E50914] hover:bg-[#B20710] text-white text-xs font-semibold transition-colors"

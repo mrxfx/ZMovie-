@@ -110,6 +110,10 @@ export default function App() {
                         <Route path="/tv" element={<CatalogPage mediaType="tv" />} />
                         <Route path="/anime" element={<CatalogPage mediaType="anime" />} />
                         <Route path="/search" element={<SearchPage />} />
+                        <Route path="/m/:id" element={<DetailsPage mediaType="movie" />} />
+                        <Route path="/t/:id" element={<DetailsPage mediaType="tv" />} />
+                        <Route path="/a/:id" element={<DetailsPage mediaType="anime" />} />
+                        <Route path="/w/:type/:id" element={<WatchPlayerPage />} />
                         <Route path="/movie/:id" element={<DetailsPage mediaType="movie" />} />
                         <Route path="/tv/:id" element={<DetailsPage mediaType="tv" />} />
                         <Route path="/anime/:id" element={<DetailsPage mediaType="anime" />} />

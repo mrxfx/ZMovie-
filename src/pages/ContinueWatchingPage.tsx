@@ -2,6 +2,7 @@ import { Play, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
 import { formatPlaybackTime } from '../utils/watchProgress';
+import { getStoredMediaDetailRoute, getStoredMediaWatchRoute } from '../utils/mediaRoutes';
 import { GlassBadge, GlassPanel } from '../components/glass';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -41,10 +42,6 @@ export function ContinueWatchingPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
           {watchProgress.map((item) => {
-            const rawId =
-              item.mediaType === 'anime'
-                ? item.malId ?? item.mediaId.replace(/^anime_/, '')
-                : item.tmdbId ?? item.mediaId.replace(/^(movie|tv)_/, '');
             const watchQuery =
               item.mediaType === 'tv' && item.season && item.episode
                 ? `?s=${item.season}&e=${item.episode}`
@@ -57,7 +54,7 @@ export function ContinueWatchingPage() {
                 className="glass-surface glass-specular rounded-2xl overflow-hidden flex flex-col hover:-translate-y-0.5 transition-all"
               >
                 <Link
-                  to={`/watch/${item.mediaType}/${rawId}${watchQuery}`}
+                  to={getStoredMediaWatchRoute(item, watchQuery)}
                   className="relative aspect-video bg-zinc-900 overflow-hidden block group"
                 >
                   {item.backdropPath || item.posterPath ? (
@@ -85,7 +82,7 @@ export function ContinueWatchingPage() {
                 <div className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Link
-                      to={`/${item.mediaType}/${rawId}`}
+                      to={getStoredMediaDetailRoute(item)}
                       className="font-display text-base font-semibold text-white hover:text-[#E50914] line-clamp-1 transition-colors"
                     >
                       {item.title}

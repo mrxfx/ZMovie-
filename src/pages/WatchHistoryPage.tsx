@@ -1,6 +1,7 @@
 import { Clock, Play, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
+import { getStoredMediaDetailRoute, getStoredMediaWatchRoute } from '../utils/mediaRoutes';
 import { GlassButton, GlassPanel } from '../components/glass';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -48,10 +49,6 @@ export function WatchHistoryPage() {
       ) : (
         <GlassPanel variant="default" padding="none" className="rounded-3xl overflow-hidden divide-y divide-white/15">
           {history.map((item) => {
-            const rawId =
-              item.mediaType === 'anime'
-                ? item.malId ?? item.mediaId.replace(/^anime_/, '')
-                : item.tmdbId ?? item.mediaId.replace(/^(movie|tv)_/, '');
             const watchQuery =
               item.mediaType === 'tv' && item.season && item.episode
                 ? `?s=${item.season}&e=${item.episode}`
@@ -65,7 +62,7 @@ export function WatchHistoryPage() {
               >
                 <div className="min-w-0">
                   <Link
-                    to={`/${item.mediaType}/${rawId}`}
+                    to={getStoredMediaDetailRoute(item)}
                     className="font-display text-base font-semibold text-white hover:text-[#E50914] line-clamp-1 transition-colors"
                   >
                     {item.title}
@@ -98,7 +95,7 @@ export function WatchHistoryPage() {
                 <GlassButton
                   variant="primary"
                   size="sm"
-                  to={`/watch/${item.mediaType}/${rawId}${watchQuery}`}
+                  to={getStoredMediaWatchRoute(item, watchQuery)}
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   Watch

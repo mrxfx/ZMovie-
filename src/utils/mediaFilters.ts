@@ -45,15 +45,15 @@ export function validateSubtitleUrl(rawUrl?: string): string | null {
 
 export function buildVidLinkUrl(params: VidLinkParams): { url: string | null; reason?: string } {
   const baseQuery = new URLSearchParams({
-    primaryColor: 'E50914',
-    secondaryColor: 'EEEEEE',
-    iconColor: 'FFFFFF',
+    primaryColor: 'ff0000',
+    secondaryColor: 'a2a2a2',
+    iconColor: 'eefdec',
     icons: params.icons === 'vid' ? 'vid' : 'default',
     player: params.playerType === 'jw' ? 'jw' : 'default',
     title: params.title === false ? 'false' : 'true',
     poster: params.poster === false ? 'false' : 'true',
     autoplay: params.autoplay ? 'true' : 'false',
-    nextbutton: params.nextbutton === false ? 'false' : 'true',
+    nextbutton: params.nextbutton ? 'true' : 'false',
   });
 
   if (params.startAt && Number.isFinite(params.startAt) && params.startAt >= 5) {
