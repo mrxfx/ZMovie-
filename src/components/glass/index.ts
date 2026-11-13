@@ -10,4 +10,3 @@ export {
   getMediaDetailRoute,
   getMediaWatchRoute,
 } from './GlassMovieCard';
-export { GlassPlayerControls, type GlassPlayerControlsProps } from './GlassPlayerControls';

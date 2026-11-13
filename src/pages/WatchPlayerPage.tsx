@@ -26,7 +26,7 @@ import {
   shouldPersistProgressUpdate,
 } from '../utils/playerEvents';
 import { createCanonicalMediaId, formatPlaybackTime } from '../utils/watchProgress';
-import { GlassButton, GlassPanel, GlassPlayerControls } from '../components/glass';
+import { GlassButton, GlassPanel } from '../components/glass';
 import { getShortTypeCode } from '../utils/mediaRoutes';
 import { ErrorState, HeroSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
