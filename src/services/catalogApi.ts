@@ -4,23 +4,36 @@ import type {
   GenreItem,
   HomeCatalogResponse,
   MediaDetails,
+  MediaSummary,
   MediaType,
   PagedCatalogResponse,
 } from '../types/media';
 
-async function apiGet<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+export interface TmdbAccountProfile {
+  id: number;
+  username: string;
+  name: string;
+  avatarPath: string | null;
+}
+
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
-      const body = (await res.json()) as { error?: string };
+      const body = (await res.json()) as { error?: string; notice?: string };
       if (body.error) message = body.error;
+      else if (body.notice) message = body.notice;
     } catch {
       // ignore json parse failure
     }
     throw new Error(message);
   }
   return (await res.json()) as T;
+}
+
+function apiGet<T>(url: string): Promise<T> {
+  return apiRequest<T>(url);
 }
 
 export function fetchHomeCatalog(): Promise<HomeCatalogResponse> {
@@ -116,4 +129,127 @@ export function fetchApiStatus(): Promise<{
   streamingProvider: string;
 }> {
   return apiGet('/api/status');
+}
+
+export function fetchTmdbSyncBatch(
+  type: 'movie' | 'tv',
+  category: string,
+  limit = 10
+): Promise<{
+  items: MediaDetails[];
+  configured: boolean;
+  notice?: string;
+}> {
+  const params = new URLSearchParams({
+    type,
+    category,
+    limit: String(limit),
+  });
+  return apiGet(`/api/tmdb/sync?${params.toString()}`);
+}
+
+export function createTmdbAuthToken(): Promise<{
+  configured: boolean;
+  requestToken?: string;
+  authenticateUrl?: string;
+  expiresAt?: string;
+  notice?: string;
+}> {
+  return apiRequest('/api/tmdb/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+}
+
+export function createTmdbAuthSession(requestToken: string): Promise<{
+  configured: boolean;
+  sessionId?: string;
+  account?: TmdbAccountProfile;
+  notice?: string;
+}> {
+  return apiRequest('/api/tmdb/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestToken }),
+  });
+}
+
+export function fetchTmdbAccountWatchlist(
+  sessionId: string,
+  accountId: number
+): Promise<{
+  configured: boolean;
+  items: MediaSummary[];
+  notice?: string;
+}> {
+  const params = new URLSearchParams({ accountId: String(accountId) });
+  return apiRequest(`/api/tmdb/account/watchlist?${params.toString()}`, {
+    headers: {
+      'x-tmdb-session': sessionId,
+    },
+  });
+}
+
+export function pushTmdbWatchlistItem(
+  sessionId: string,
+  accountId: number,
+  mediaType: 'movie' | 'tv',
+  tmdbId: number,
+  watchlist = true
+): Promise<{
+  configured: boolean;
+  success: boolean;
+  notice?: string;
+}> {
+  return apiRequest('/api/tmdb/account/watchlist', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-tmdb-session': sessionId,
+    },
+    body: JSON.stringify({
+      accountId,
+      mediaType,
+      tmdbId,
+      watchlist,
+    }),
+  });
+}
+
+export interface JikanUserProfile {
+  malId?: number;
+  username: string;
+  url: string;
+  avatarPath: string | null;
+}
+
+export function fetchAnimeSyncBatch(
+  category = 'trending',
+  limit = 10
+): Promise<{
+  items: MediaDetails[];
+  configured: boolean;
+  notice?: string;
+}> {
+  const params = new URLSearchParams({
+    category,
+    limit: String(limit),
+  });
+  return apiGet(`/api/anime/sync?${params.toString()}`);
+}
+
+export function fetchRandomAnime(): Promise<{
+  item: MediaSummary | null;
+  notice?: string;
+}> {
+  return apiGet('/api/anime/random');
+}
+
+export function fetchJikanUserFavorites(username: string): Promise<{
+  user: JikanUserProfile | null;
+  items: MediaSummary[];
+  notice?: string;
+}> {
+  return apiGet(`/api/jikan/user/${encodeURIComponent(username.trim())}/favorites`);
 }

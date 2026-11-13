@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Shuffle, SlidersHorizontal } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   fetchAnimeCatalog,
   fetchGenres,
   fetchMoviesList,
+  fetchRandomAnime,
   fetchTvList,
 } from '../services/catalogApi';
 import type { GenreItem, MediaSummary, MediaType, PagedCatalogResponse } from '../types/media';
 import { GlassButton, GlassMovieCard, GlassPanel } from '../components/glass';
 import { useAdminCatalog } from '../context/AdminCatalogContext';
 import { filterCatalogMedia } from '../utils/mediaFilters';
+import { getMediaDetailRoute } from '../utils/mediaRoutes';
 import {
   CatalogNoticeBanner,
   EmptyState,
@@ -40,6 +42,10 @@ const CATEGORY_OPTIONS: Record<MediaType, { id: string; label: string }[]> = {
     { id: 'trending', label: 'Trending Airing' },
     { id: 'popular', label: 'Most Popular' },
     { id: 'top_rated', label: 'Top Rated' },
+    { id: 'seasons_now', label: 'Seasonal Now' },
+    { id: 'upcoming', label: 'Upcoming' },
+    { id: 'top_movies', label: 'Anime Movies' },
+    { id: 'schedules', label: 'Schedule' },
   ],
 };
 
@@ -47,6 +53,8 @@ const YEARS = ['2026', '2025', '2024', '2023', '2022', '2021', '2020', '2019', '
 
 export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [pickingRandom, setPickingRandom] = useState(false);
 
   const pageTitle =
     mediaType === 'movie' ? 'Movies' : mediaType === 'tv' ? 'TV Shows' : 'Anime';
@@ -164,12 +172,35 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
       <GlassPanel variant="default" padding="md" className="rounded-3xl">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-              {pageTitle}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                {pageTitle}
+              </h1>
+              {mediaType === 'anime' && (
+                <GlassButton
+                  variant="glass"
+                  size="sm"
+                  disabled={pickingRandom}
+                  onClick={() => {
+                    setPickingRandom(true);
+                    void fetchRandomAnime()
+                      .then((res) => {
+                        if (res.item) {
+                          navigate(getMediaDetailRoute(res.item));
+                        }
+                      })
+                      .finally(() => setPickingRandom(false));
+                  }}
+                  className="min-h-[44px] sm:min-h-[36px]"
+                >
+                  <Shuffle className="w-3.5 h-3.5 text-[#E50914]" />
+                  {pickingRandom ? 'Rolling...' : 'Random Anime'}
+                </GlassButton>
+              )}
+            </div>
             <p className="text-sm text-white/70 mt-1">
               {mediaType === 'anime'
-                ? 'Curated anime catalog powered by MyAnimeList / Jikan metadata.'
+                ? 'Curated anime catalog powered by Jikan v4 / MyAnimeList metadata.'
                 : `Explore ${pageTitle.toLowerCase()} with genre, year, rating, and sorting controls.`}
             </p>
           </div>

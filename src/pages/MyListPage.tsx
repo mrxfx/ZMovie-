@@ -6,6 +6,7 @@ import { useLibrary } from '../context/LibraryContext';
 import type { MediaSummary, MediaType } from '../types/media';
 import { filterWatchlistItems } from '../utils/mediaFilters';
 import { GlassButton, GlassMovieCard, GlassPanel } from '../components/glass';
+import { TmdbAccountSyncCard } from '../components/TmdbAccountSyncCard';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 import { GLASS_SPRING } from '../styles/glassTokens';
@@ -59,6 +60,8 @@ export function MyListPage() {
           </span>
         </div>
       </GlassPanel>
+
+      <TmdbAccountSyncCard compact />
 
       {/* Glass Filters & Search */}
       {watchlist.length > 0 && (

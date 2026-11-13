@@ -22,9 +22,16 @@ import {
   type AdminCatalogInput,
   useAdminCatalog,
 } from '../context/AdminCatalogContext';
-import type { AdminCatalogItem, MediaType } from '../types/media';
+import type { AdminCatalogItem, MediaDetails, MediaSummary, MediaType } from '../types/media';
 import { compressImageFileToDataUrl } from '../utils/imageUpload';
 import { extractShortSlug, getShortTypeCode } from '../utils/mediaRoutes';
+import {
+  fetchAnimeSyncBatch,
+  fetchMediaDetails,
+  fetchTmdbSyncBatch,
+  searchCatalog,
+} from '../services/catalogApi';
+import { mapMediaDetailsToCatalogInput, planCatalogSync } from '../utils/tmdbSync';
 import { GlassBadge, GlassButton, GlassModal, GlassPanel } from '../components/glass';
 import { EmptyState, GridSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -103,6 +110,17 @@ export function AdminPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | MediaType>('all');
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<AdminCatalogItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // TMDB & Jikan Catalog Sync & Quick Lookup state
+  const [syncMediaType, setSyncMediaType] = useState<'movie' | 'tv' | 'anime'>('movie');
+  const [syncCategory, setSyncCategory] = useState<string>('trending');
+  const [syncLimit, setSyncLimit] = useState<number>(10);
+  const [syncingFeed, setSyncingFeed] = useState(false);
+  const [tmdbQuery, setTmdbQuery] = useState('');
+  const [searchingTmdb, setSearchingTmdb] = useState(false);
+  const [tmdbLookupResults, setTmdbLookupResults] = useState<MediaSummary[]>([]);
+  const [tmdbSyncNotice, setTmdbSyncNotice] = useState<string | null>(null);
+  const [importingResultId, setImportingResultId] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const movies = adminItems.filter((i) => i.mediaType === 'movie').length;
@@ -292,6 +310,163 @@ export function AdminPage() {
     }
   };
 
+  const applyCatalogInputToForm = (input: AdminCatalogInput) => {
+    setEditingId(null);
+    setFormError(null);
+    setForm({
+      mediaType: input.mediaType,
+      title: input.title,
+      overview: input.overview,
+      posterPath: input.posterPath,
+      backdropPath: input.backdropPath,
+      releaseYear: input.releaseYear,
+      voteAverage: String(input.voteAverage),
+      runtime: input.runtime ? String(input.runtime) : '',
+      originalLanguage: input.originalLanguage || 'en',
+      genresText: input.genres.join(', '),
+      tmdbId: input.tmdbId ? String(input.tmdbId) : '',
+      malId: input.malId ? String(input.malId) : '',
+      seasonCount: input.seasonCount ? String(input.seasonCount) : '1',
+      episodeCount: input.episodeCount ? String(input.episodeCount) : '12',
+      featured: input.featured,
+    });
+  };
+
+  const handleBatchSyncFeed = async () => {
+    setSyncingFeed(true);
+    setFormError(null);
+    setStatusMessage(null);
+    setTmdbSyncNotice(null);
+    const sourceLabel = syncMediaType === 'anime' ? 'Jikan / MAL' : 'TMDB';
+    try {
+      const batchRes =
+        syncMediaType === 'anime'
+          ? await fetchAnimeSyncBatch(syncCategory, syncLimit)
+          : await fetchTmdbSyncBatch(syncMediaType, syncCategory, syncLimit);
+      if (!batchRes.configured || batchRes.items.length === 0) {
+        setTmdbSyncNotice(batchRes.notice || `No ${sourceLabel} titles returned for that feed.`);
+        return;
+      }
+
+      const candidates = batchRes.items.map((item) => mapMediaDetailsToCatalogInput(item));
+      const plan = planCatalogSync(candidates, adminItems, { updateExisting: true });
+
+      for (const entry of plan.toCreate) {
+        await createCatalogItem(entry);
+      }
+      for (const entry of plan.toUpdate) {
+        await updateCatalogItem(entry.itemId, entry.input);
+      }
+
+      const summary = `${sourceLabel} Sync complete: ${plan.toCreate.length} created, ${plan.toUpdate.length} updated, ${plan.skipped} skipped.`;
+      setStatusMessage(summary);
+      setTmdbSyncNotice(summary);
+    } catch (err) {
+      setTmdbSyncNotice(
+        err instanceof Error ? err.message : `Unable to sync ${sourceLabel} feed to Firestore.`
+      );
+    } finally {
+      setSyncingFeed(false);
+    }
+  };
+
+  const handleTmdbLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = tmdbQuery.trim();
+    if (!q) return;
+    setSearchingTmdb(true);
+    setTmdbSyncNotice(null);
+    setTmdbLookupResults([]);
+    const sourceLabel = syncMediaType === 'anime' ? 'Jikan / MAL' : 'TMDB';
+
+    try {
+      if (/^\d+$/.test(q)) {
+        const res = await fetchMediaDetails(syncMediaType, q);
+        if (res.details) {
+          setTmdbLookupResults([res.details]);
+          return;
+        }
+        setTmdbSyncNotice(res.notice || `No ${sourceLabel} ${syncMediaType} found for ID #${q}.`);
+        return;
+      }
+
+      const res = await searchCatalog(q, syncMediaType, 1);
+      if (!res.configured && res.items.length === 0) {
+        setTmdbSyncNotice(res.notice || `${sourceLabel} search is unavailable.`);
+        return;
+      }
+      if (res.items.length === 0) {
+        setTmdbSyncNotice(`No ${sourceLabel} results matched "${q}".`);
+        return;
+      }
+      setTmdbLookupResults(res.items.slice(0, 6));
+    } catch (err) {
+      setTmdbSyncNotice(err instanceof Error ? err.message : `${sourceLabel} lookup failed.`);
+    } finally {
+      setSearchingTmdb(false);
+    }
+  };
+
+  const resolveLookupDetails = async (item: MediaSummary): Promise<MediaDetails> => {
+    const targetType = item.mediaType;
+    const lookupId = String(
+      item.mediaType === 'anime' ? item.malId || item.id : item.tmdbId || item.id
+    );
+    try {
+      const res = await fetchMediaDetails(targetType, lookupId);
+      if (res.details) return res.details;
+    } catch {
+      // fall back to summary details
+    }
+    return {
+      ...item,
+      runtime: null,
+      credits: [],
+      videos: [],
+      similar: [],
+      recommendations: [],
+    };
+  };
+
+  const handleFillFormFromLookup = async (item: MediaSummary) => {
+    setImportingResultId(item.id);
+    setTmdbSyncNotice(null);
+    try {
+      const details = await resolveLookupDetails(item);
+      applyCatalogInputToForm(mapMediaDetailsToCatalogInput(details));
+      setStatusMessage(
+        `Loaded "${details.title}" (${item.mediaType === 'anime' ? 'Jikan' : 'TMDB'}) into the publishing form.`
+      );
+    } finally {
+      setImportingResultId(null);
+    }
+  };
+
+  const handleSyncSingleLookup = async (item: MediaSummary) => {
+    setImportingResultId(item.id);
+    setFormError(null);
+    setTmdbSyncNotice(null);
+    const sourceLabel = item.mediaType === 'anime' ? 'Jikan / MAL' : 'TMDB';
+    try {
+      const details = await resolveLookupDetails(item);
+      const input = mapMediaDetailsToCatalogInput(details);
+      const plan = planCatalogSync([input], adminItems, { updateExisting: true });
+      if (plan.toCreate.length > 0) {
+        await createCatalogItem(plan.toCreate[0]);
+        setStatusMessage(`Synced "${input.title}" from ${sourceLabel} into Firestore.`);
+        setTmdbSyncNotice(`Created "${input.title}" in catalogItems.`);
+      } else if (plan.toUpdate.length > 0) {
+        await updateCatalogItem(plan.toUpdate[0].itemId, plan.toUpdate[0].input);
+        setStatusMessage(`Updated existing "${input.title}" from ${sourceLabel}.`);
+        setTmdbSyncNotice(`Updated "${input.title}" in catalogItems.`);
+      }
+    } catch (err) {
+      setTmdbSyncNotice(err instanceof Error ? err.message : `Failed to sync title from ${sourceLabel}.`);
+    } finally {
+      setImportingResultId(null);
+    }
+  };
+
   if (!authReady) {
     return (
       <div className="w-full pt-4">
@@ -445,6 +620,198 @@ export function AdminPage() {
           {formError}
         </GlassPanel>
       )}
+
+      {/* TMDB & Jikan Catalog Sync & Quick Lookup */}
+      <GlassPanel variant="default" padding="lg" className="rounded-3xl space-y-5 min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/15 pb-4">
+          <div className="space-y-1 min-w-0">
+            <GlassBadge variant="red" size="xs">
+              TMDB &amp; Jikan Sync
+            </GlassBadge>
+            <h2 className="font-display text-lg sm:text-xl font-bold text-white">
+              Sync Feeds &amp; Lookup TMDB / MAL Anime
+            </h2>
+            <p className="text-xs sm:text-sm text-white/70">
+              Batch-import trending TMDB movies/TV shows or Jikan v4 anime straight into
+              Firestore, or look up any title by name, TMDB ID, or MAL ID.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Batch Feed Sync */}
+          <div className="p-4 rounded-2xl glass-white space-y-3 min-w-0">
+            <h3 className="font-display text-sm font-bold text-white">
+              {syncMediaType === 'anime' ? 'Batch Jikan / MAL Anime Sync' : 'Batch TMDB Feed Sync'}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <select
+                aria-label="Sync content type"
+                value={syncMediaType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const nextType = val === 'tv' ? 'tv' : val === 'anime' ? 'anime' : 'movie';
+                  setSyncMediaType(nextType);
+                  setSyncCategory('trending');
+                }}
+                className={`${INPUT_CLASS} min-h-[44px]`}
+              >
+                <option value="movie">Movies (TMDB)</option>
+                <option value="tv">TV Shows (TMDB)</option>
+                <option value="anime">Anime (Jikan / MAL)</option>
+              </select>
+
+              <select
+                aria-label="Sync category"
+                value={syncCategory}
+                onChange={(e) => setSyncCategory(e.target.value)}
+                className={`${INPUT_CLASS} min-h-[44px]`}
+              >
+                <option value="trending">
+                  {syncMediaType === 'anime' ? 'Trending Airing' : 'Trending'}
+                </option>
+                <option value="popular">Popular</option>
+                <option value="top_rated">Top Rated</option>
+                {syncMediaType === 'movie' ? (
+                  <>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="now_playing">Now Playing</option>
+                  </>
+                ) : syncMediaType === 'tv' ? (
+                  <option value="on_the_air">On The Air</option>
+                ) : (
+                  <>
+                    <option value="seasons_now">Seasonal Now</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="top_movies">Anime Movies</option>
+                    <option value="schedules">Schedule</option>
+                  </>
+                )}
+              </select>
+
+              <select
+                aria-label="Sync batch count"
+                value={syncLimit}
+                onChange={(e) => setSyncLimit(Number(e.target.value))}
+                className={`${INPUT_CLASS} min-h-[44px] font-mono-tabular`}
+              >
+                <option value={5}>5 titles</option>
+                <option value={10}>10 titles</option>
+                <option value={15}>15 titles</option>
+              </select>
+            </div>
+
+            <GlassButton
+              variant="primary"
+              size="md"
+              onClick={() => void handleBatchSyncFeed()}
+              disabled={syncingFeed}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              {syncingFeed
+                ? `Syncing ${syncMediaType === 'anime' ? 'Jikan' : 'TMDB'} Feed...`
+                : 'Sync Feed to Firestore'}
+            </GlassButton>
+          </div>
+
+          {/* Single Title Lookup */}
+          <form onSubmit={handleTmdbLookup} className="p-4 rounded-2xl glass-white space-y-3 min-w-0">
+            <h3 className="font-display text-sm font-bold text-white">
+              {syncMediaType === 'anime'
+                ? 'Quick Jikan Lookup (Name or MAL ID)'
+                : 'Quick TMDB Lookup (Name or TMDB ID)'}
+            </h3>
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <input
+                type="search"
+                aria-label="Search by title or provider ID"
+                value={tmdbQuery}
+                onChange={(e) => setTmdbQuery(e.target.value)}
+                placeholder={
+                  syncMediaType === 'anime'
+                    ? 'Search Jikan anime or enter MAL ID (e.g. 52991)...'
+                    : `Search TMDB ${syncMediaType === 'tv' ? 'TV shows' : 'movies'} or enter ID...`
+                }
+                className={`${INPUT_CLASS} min-h-[44px] flex-1 min-w-0`}
+              />
+              <GlassButton
+                type="submit"
+                variant="glass"
+                size="md"
+                disabled={searchingTmdb}
+                className="min-h-[44px] shrink-0"
+              >
+                <Search className="w-4 h-4" />
+                {searchingTmdb ? 'Searching...' : 'Lookup'}
+              </GlassButton>
+            </div>
+            <p className="text-xs text-white/60">
+              Load metadata into the form below or publish straight to Firestore with deduplication.
+            </p>
+          </form>
+        </div>
+
+        {tmdbSyncNotice && (
+          <p role="status" className="text-xs sm:text-sm text-amber-200 leading-relaxed">
+            {tmdbSyncNotice}
+          </p>
+        )}
+
+        {tmdbLookupResults.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tmdbLookupResults.map((item) => (
+              <div
+                key={`${item.mediaType}_${item.id}`}
+                className="p-3 rounded-2xl glass-white flex gap-3 items-start min-w-0"
+              >
+                <div className="w-14 aspect-[2/3] rounded-xl overflow-hidden bg-white/10 shrink-0">
+                  {item.posterPath ? (
+                    <img
+                      src={item.posterPath}
+                      alt={item.title}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/50">
+                      <Film className="w-5 h-5" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <p className="font-display text-sm font-bold text-white line-clamp-1">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-white/65 font-mono-tabular">
+                    {item.mediaType.toUpperCase()} · {item.releaseYear || 'TBA'} · ★{' '}
+                    {item.voteAverage.toFixed(1)}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <GlassButton
+                      variant="glass"
+                      size="sm"
+                      disabled={importingResultId === item.id}
+                      onClick={() => void handleFillFormFromLookup(item)}
+                      className="min-h-[38px]"
+                    >
+                      Fill Form
+                    </GlassButton>
+                    <GlassButton
+                      variant="primary"
+                      size="sm"
+                      disabled={importingResultId === item.id}
+                      onClick={() => void handleSyncSingleLookup(item)}
+                      className="min-h-[38px]"
+                    >
+                      {importingResultId === item.id ? 'Syncing...' : 'Sync Now'}
+                    </GlassButton>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Publish / Edit Glass Form */}

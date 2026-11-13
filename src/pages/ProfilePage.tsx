@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAdminCatalog } from '../context/AdminCatalogContext';
 import { useLibrary } from '../context/LibraryContext';
 import { GlassButton, GlassPanel } from '../components/glass';
+import { TmdbAccountSyncCard } from '../components/TmdbAccountSyncCard';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
@@ -162,6 +163,8 @@ export function ProfilePage() {
           <p className="font-display text-2xl font-bold font-mono-tabular text-white mt-1">{history.length}</p>
         </Link>
       </div>
+
+      <TmdbAccountSyncCard />
 
       {/* Edit Profile Form */}
       <GlassPanel variant="default" padding="lg" className="rounded-3xl">

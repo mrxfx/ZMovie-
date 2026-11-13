@@ -1,13 +1,25 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
+  createTmdbRequestToken,
+  createTmdbSession,
+  fetchTmdbAccountWatchlist,
+  fetchTmdbCatalogSyncBatch,
   fetchTmdbCategory,
   fetchTmdbDetails,
   fetchTmdbGenres,
   fetchTmdbSeasonEpisodes,
   isTmdbConfigured,
   searchTmdbMedia,
+  toggleTmdbAccountWatchlist,
 } from './tmdb.js';
-import { fetchAnimeDetails, fetchAnimeList, getAnimeGenres } from './anime.js';
+import {
+  fetchAnimeCatalogSyncBatch,
+  fetchAnimeDetails,
+  fetchAnimeGenres,
+  fetchAnimeList,
+  fetchJikanUserAnimeFavorites,
+  fetchRandomAnime,
+} from './anime.js';
 import type { HomeCatalogResponse } from '../src/types/media.js';
 
 const TV_CATEGORIES = new Set([
@@ -36,6 +48,22 @@ function sendText(res: ServerResponse, statusCode: number, contentType: string, 
 function getQueryParam(searchParams: URLSearchParams, key: string): string | undefined {
   const value = searchParams.get(key);
   return value !== null && value !== '' ? value : undefined;
+}
+
+async function readJsonBody<T extends Record<string, unknown>>(req: IncomingMessage): Promise<T> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > 32 * 1024) {
+      throw new Error('Request payload too large');
+    }
+    chunks.push(buf);
+  }
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  if (!raw) return {} as T;
+  return JSON.parse(raw) as T;
 }
 
 function getRequestBaseUrl(req: IncomingMessage, url: URL): string {
@@ -163,7 +191,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
   if (genresMatch) {
     const type = decodeURIComponent(genresMatch[1]);
     if (type === 'anime') {
-      sendJson(res, 200, { genres: getAnimeGenres(), source: 'jikan' });
+      const genres = await fetchAnimeGenres();
+      sendJson(res, 200, { genres, source: 'jikan' });
       return true;
     }
     if (type !== 'movie' && type !== 'tv') {
@@ -262,6 +291,31 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     return true;
   }
 
+  // Anime Catalog Sync Batch: /api/anime/sync
+  if (pathname === '/api/anime/sync') {
+    const category = getQueryParam(params, 'category') || 'trending';
+    const rawLimit = Number(getQueryParam(params, 'limit') || '10');
+    const result = await fetchAnimeCatalogSyncBatch(category, rawLimit);
+    sendJson(res, 200, result);
+    return true;
+  }
+
+  // Random Anime Discovery: /api/anime/random
+  if (pathname === '/api/anime/random') {
+    const result = await fetchRandomAnime();
+    sendJson(res, 200, result);
+    return true;
+  }
+
+  // Public MyAnimeList User Favorites (Read-Only via Jikan): /api/jikan/user/:username/favorites
+  const jikanUserFavMatch = pathname.match(/^\/api\/jikan\/user\/([^/]+)\/favorites$/);
+  if (jikanUserFavMatch) {
+    const username = decodeURIComponent(jikanUserFavMatch[1]);
+    const result = await fetchJikanUserAnimeFavorites(username);
+    sendJson(res, 200, result);
+    return true;
+  }
+
   // Anime details: /api/anime/:malId
   const animeDetailMatch = pathname.match(/^\/api\/anime\/([^/]+)$/);
   if (animeDetailMatch) {
@@ -320,6 +374,103 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       configured: tmdbRes.configured,
       notice: tmdbRes.notice || animeRes.notice,
     });
+    return true;
+  }
+
+  // TMDB Catalog Sync Batch: /api/tmdb/sync
+  if (pathname === '/api/tmdb/sync') {
+    const typeParam = getQueryParam(params, 'type') === 'tv' ? 'tv' : 'movie';
+    const category = getQueryParam(params, 'category') || 'trending';
+    const rawLimit = Number(getQueryParam(params, 'limit') || '10');
+    const result = await fetchTmdbCatalogSyncBatch(typeParam, category, rawLimit);
+    sendJson(res, 200, result);
+    return true;
+  }
+
+  // TMDB Authentication: POST /api/tmdb/auth/token
+  if (pathname === '/api/tmdb/auth/token' && req.method === 'POST') {
+    const result = await createTmdbRequestToken();
+    sendJson(res, 200, result);
+    return true;
+  }
+
+  // TMDB Authentication: POST /api/tmdb/auth/session
+  if (pathname === '/api/tmdb/auth/session' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody<{ requestToken?: string }>(req);
+      const result = await createTmdbSession(String(body.requestToken || ''));
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendJson(res, 400, {
+        configured: isTmdbConfigured(),
+        notice: error instanceof Error ? error.message : 'Invalid request body',
+      });
+    }
+    return true;
+  }
+
+  // TMDB Account Watchlist Sync: GET & POST /api/tmdb/account/watchlist
+  if (pathname === '/api/tmdb/account/watchlist') {
+    const sessionHeader = req.headers['x-tmdb-session'];
+    const sessionId = Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader || '';
+    if (!sessionId.trim()) {
+      sendJson(res, 401, {
+        configured: isTmdbConfigured(),
+        items: [],
+        success: false,
+        notice: 'TMDB session header missing. Connect your TMDB account first.',
+      });
+      return true;
+    }
+
+    if (req.method === 'POST') {
+      try {
+        const body = await readJsonBody<{
+          accountId?: number;
+          mediaType?: 'movie' | 'tv';
+          tmdbId?: number;
+          watchlist?: boolean;
+        }>(req);
+        const accountId = Number(body.accountId);
+        const tmdbId = Number(body.tmdbId);
+        const mediaType = body.mediaType === 'tv' ? 'tv' : 'movie';
+        if (!Number.isInteger(accountId) || accountId <= 0 || !Number.isInteger(tmdbId) || tmdbId <= 0) {
+          sendJson(res, 400, {
+            configured: isTmdbConfigured(),
+            success: false,
+            notice: 'Valid accountId and tmdbId are required.',
+          });
+          return true;
+        }
+        const result = await toggleTmdbAccountWatchlist(
+          sessionId.trim(),
+          accountId,
+          mediaType,
+          tmdbId,
+          body.watchlist !== false
+        );
+        sendJson(res, 200, result);
+      } catch (error) {
+        sendJson(res, 400, {
+          configured: isTmdbConfigured(),
+          success: false,
+          notice: error instanceof Error ? error.message : 'Invalid JSON payload',
+        });
+      }
+      return true;
+    }
+
+    const accountId = Number(getQueryParam(params, 'accountId') || '0');
+    if (!Number.isInteger(accountId) || accountId <= 0) {
+      sendJson(res, 400, {
+        configured: isTmdbConfigured(),
+        items: [],
+        notice: 'Valid TMDB accountId query parameter is required.',
+      });
+      return true;
+    }
+    const result = await fetchTmdbAccountWatchlist(sessionId.trim(), accountId);
+    sendJson(res, 200, result);
     return true;
   }
 

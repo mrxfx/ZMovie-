@@ -26,6 +26,7 @@ import {
   mergeWatchProgressItems,
   mergeWatchlistItems,
 } from '../utils/watchProgress';
+import { filterNewTmdbWatchlistItems } from '../utils/tmdbSync';
 
 const STORAGE_KEYS = {
   watchlist: 'zyvomovie_watchlist_v1',
@@ -83,6 +84,7 @@ interface LibraryContextValue {
   syncStatus: 'guest-local' | 'cloud-synced' | 'email-unverified';
   isInWatchlist: (mediaId: string) => boolean;
   toggleWatchlist: (media: MediaSummary) => Promise<boolean>;
+  addWatchlistBatch: (items: MediaSummary[]) => Promise<number>;
   removeFromWatchlist: (mediaId: string) => Promise<void>;
   saveWatchProgress: (input: Omit<WatchProgressItem, 'uid' | 'updatedAtMs'>) => Promise<void>;
   removeWatchProgress: (mediaId: string) => Promise<void>;
@@ -381,6 +383,65 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [isCloudVerified, user, watchlist]
   );
 
+  const addWatchlistBatch = useCallback(
+    async (items: MediaSummary[]): Promise<number> => {
+      const additions = filterNewTmdbWatchlistItems(items, watchlist);
+      if (additions.length === 0) return 0;
+
+      if (isCloudVerified && user) {
+        const CHUNK_SIZE = 400;
+        for (let i = 0; i < additions.length; i += CHUNK_SIZE) {
+          const chunk = additions.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(db);
+          for (const media of chunk) {
+            const mediaId = createCanonicalMediaId(media.mediaType, media.id);
+            batch.set(
+              doc(db, 'users', user.uid, 'watchlist', mediaId),
+              {
+                uid: user.uid,
+                mediaId,
+                mediaType: media.mediaType,
+                title: media.title.slice(0, 200),
+                posterPath: (media.posterPath || '').slice(0, 400000),
+                releaseYear: (media.releaseYear || '').slice(0, 10),
+                voteAverage: Number(media.voteAverage || 0),
+                ...(media.tmdbId ? { tmdbId: media.tmdbId } : {}),
+                ...(media.malId ? { malId: media.malId } : {}),
+                addedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
+          try {
+            await batch.commit();
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/watchlist`);
+          }
+        }
+        return additions.length;
+      }
+
+      const now = Date.now();
+      const created: WatchlistItem[] = additions.map((media, idx) => ({
+        uid: 'guest',
+        mediaId: createCanonicalMediaId(media.mediaType, media.id),
+        mediaType: media.mediaType,
+        title: media.title.slice(0, 200),
+        posterPath: (media.posterPath || '').slice(0, 400000),
+        releaseYear: (media.releaseYear || '').slice(0, 10),
+        voteAverage: Number(media.voteAverage || 0),
+        tmdbId: media.tmdbId,
+        malId: media.malId,
+        addedAtMs: now + idx,
+      }));
+      const next = [...created, ...watchlist];
+      setWatchlist(next);
+      writeLocalJson(STORAGE_KEYS.watchlist, next);
+      return created.length;
+    },
+    [isCloudVerified, user, watchlist]
+  );
+
   const removeFromWatchlist = useCallback(
     async (mediaId: string) => {
       if (isCloudVerified && user) {
@@ -605,6 +666,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         syncStatus,
         isInWatchlist,
         toggleWatchlist,
+        addWatchlistBatch,
         removeFromWatchlist,
         saveWatchProgress,
         removeWatchProgress,

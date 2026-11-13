@@ -124,10 +124,17 @@ function mapTmdbSummary(raw: TmdbRawMedia, mediaType: 'movie' | 'tv'): MediaSumm
   };
 }
 
-async function tmdbFetch<T>(endpoint: string, ttlMs = 300_000): Promise<T> {
+async function tmdbFetch<T>(
+  endpoint: string,
+  ttlMs = 300_000,
+  init?: { method?: 'GET' | 'POST'; body?: Record<string, unknown> }
+): Promise<T> {
+  const method = init?.method || 'GET';
   const cacheKey = `tmdb:${endpoint}`;
-  const cached = apiCache.get<T>(cacheKey);
-  if (cached) return cached;
+  if (method === 'GET' && ttlMs > 0) {
+    const cached = apiCache.get<T>(cacheKey);
+    if (cached) return cached;
+  }
 
   const token = getTmdbToken();
   if (!token) {
@@ -139,10 +146,13 @@ async function tmdbFetch<T>(endpoint: string, ttlMs = 300_000): Promise<T> {
 
   try {
     const res = await fetch(`${TMDB_BASE_URL}${endpoint}`, {
+      method,
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
+        ...(init?.body ? { 'Content-Type': 'application/json;charset=utf-8' } : {}),
       },
+      body: init?.body ? JSON.stringify(init.body) : undefined,
       signal: controller.signal,
     });
 
@@ -156,7 +166,9 @@ async function tmdbFetch<T>(endpoint: string, ttlMs = 300_000): Promise<T> {
     }
 
     const json = (await res.json()) as T;
-    apiCache.set(cacheKey, json, ttlMs);
+    if (method === 'GET' && ttlMs > 0) {
+      apiCache.set(cacheKey, json, ttlMs);
+    }
     return json;
   } finally {
     clearTimeout(timeout);
@@ -482,3 +494,247 @@ export async function searchTmdbMedia(
     };
   }
 }
+
+export async function fetchTmdbCatalogSyncBatch(
+  type: 'movie' | 'tv',
+  category: string,
+  limit = 10
+): Promise<{
+  items: MediaDetails[];
+  configured: boolean;
+  notice?: string;
+}> {
+  if (!isTmdbConfigured()) {
+    return {
+      items: [],
+      configured: false,
+      notice:
+        'TMDB_READ_ACCESS_TOKEN is not configured on the server. Set TMDB_READ_ACCESS_TOKEN to sync titles from TMDB.',
+    };
+  }
+
+  const safeLimit = Math.min(15, Math.max(1, Math.floor(limit || 10)));
+  const catResult = await fetchTmdbCategory(type, category, { page: 1 });
+  if (catResult.items.length === 0) {
+    return {
+      items: [],
+      configured: catResult.configured,
+      notice: catResult.notice || 'No TMDB titles returned for that feed.',
+    };
+  }
+
+  const candidates = catResult.items.slice(0, safeLimit);
+  const detailed = await Promise.all(
+    candidates.map(async (summary) => {
+      const res = await fetchTmdbDetails(type, String(summary.tmdbId || summary.id));
+      if (res.details) return res.details;
+      return {
+        ...summary,
+        runtime: null,
+        credits: [],
+        videos: [],
+        similar: [],
+        recommendations: [],
+      } satisfies MediaDetails;
+    })
+  );
+
+  return {
+    items: detailed,
+    configured: true,
+  };
+}
+
+export async function createTmdbRequestToken(): Promise<{
+  configured: boolean;
+  requestToken?: string;
+  authenticateUrl?: string;
+  expiresAt?: string;
+  notice?: string;
+}> {
+  if (!isTmdbConfigured()) {
+    return {
+      configured: false,
+      notice:
+        'TMDB_READ_ACCESS_TOKEN is not configured on the server. Add TMDB_READ_ACCESS_TOKEN to connect your TMDB account.',
+    };
+  }
+
+  try {
+    const data = await tmdbFetch<{
+      success: boolean;
+      expires_at: string;
+      request_token: string;
+    }>('/authentication/token/new', 0);
+
+    if (!data.success || !data.request_token) {
+      return { configured: true, notice: 'TMDB did not return a request token.' };
+    }
+
+    return {
+      configured: true,
+      requestToken: data.request_token,
+      authenticateUrl: `https://www.themoviedb.org/authenticate/${encodeURIComponent(data.request_token)}`,
+      expiresAt: data.expires_at,
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      notice: `Unable to start TMDB sign-in (${err instanceof Error ? err.message : 'error'}).`,
+    };
+  }
+}
+
+export interface TmdbAccountInfo {
+  id: number;
+  username: string;
+  name: string;
+  avatarPath: string | null;
+}
+
+export async function createTmdbSession(requestToken: string): Promise<{
+  configured: boolean;
+  sessionId?: string;
+  account?: TmdbAccountInfo;
+  notice?: string;
+}> {
+  if (!isTmdbConfigured()) {
+    return {
+      configured: false,
+      notice: 'TMDB_READ_ACCESS_TOKEN is not configured on the server.',
+    };
+  }
+
+  const cleanToken = requestToken.trim();
+  if (!cleanToken) {
+    return { configured: true, notice: 'TMDB request token is required.' };
+  }
+
+  try {
+    const sessionData = await tmdbFetch<{
+      success: boolean;
+      session_id: string;
+    }>('/authentication/session/new', 0, {
+      method: 'POST',
+      body: { request_token: cleanToken },
+    });
+
+    if (!sessionData.success || !sessionData.session_id) {
+      return {
+        configured: true,
+        notice: 'TMDB session was not approved. Please approve access on TMDB first.',
+      };
+    }
+
+    const accountData = await tmdbFetch<{
+      id: number;
+      username: string;
+      name?: string;
+      avatar?: { tmdb?: { avatar_path?: string | null } };
+    }>(`/account?session_id=${encodeURIComponent(sessionData.session_id)}`, 0);
+
+    return {
+      configured: true,
+      sessionId: sessionData.session_id,
+      account: {
+        id: accountData.id,
+        username: accountData.username || `user_${accountData.id}`,
+        name: accountData.name || accountData.username || 'TMDB Member',
+        avatarPath: tmdbImage(accountData.avatar?.tmdb?.avatar_path, 'w185'),
+      },
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      notice: `Unable to create TMDB session (${err instanceof Error ? err.message : 'error'}).`,
+    };
+  }
+}
+
+export async function fetchTmdbAccountWatchlist(
+  sessionId: string,
+  accountId: number
+): Promise<{
+  configured: boolean;
+  items: MediaSummary[];
+  notice?: string;
+}> {
+  if (!isTmdbConfigured()) {
+    return {
+      configured: false,
+      items: [],
+      notice: 'TMDB_READ_ACCESS_TOKEN is not configured on the server.',
+    };
+  }
+
+  try {
+    const [moviesData, tvData] = await Promise.all([
+      tmdbFetch<{ results?: TmdbRawMedia[] }>(
+        `/account/${accountId}/watchlist/movies?language=en-US&page=1&sort_by=created_at.desc&session_id=${encodeURIComponent(sessionId)}`,
+        0
+      ),
+      tmdbFetch<{ results?: TmdbRawMedia[] }>(
+        `/account/${accountId}/watchlist/tv?language=en-US&page=1&sort_by=created_at.desc&session_id=${encodeURIComponent(sessionId)}`,
+        0
+      ),
+    ]);
+
+    const items = [
+      ...(moviesData.results || []).map((r) => mapTmdbSummary(r, 'movie')),
+      ...(tvData.results || []).map((r) => mapTmdbSummary(r, 'tv')),
+    ];
+    return { configured: true, items };
+  } catch (err) {
+    return {
+      configured: true,
+      items: [],
+      notice: `Unable to fetch TMDB watchlist (${err instanceof Error ? err.message : 'error'}).`,
+    };
+  }
+}
+
+export async function toggleTmdbAccountWatchlist(
+  sessionId: string,
+  accountId: number,
+  mediaType: 'movie' | 'tv',
+  mediaId: number,
+  watchlist: boolean
+): Promise<{
+  configured: boolean;
+  success: boolean;
+  notice?: string;
+}> {
+  if (!isTmdbConfigured()) {
+    return {
+      configured: false,
+      success: false,
+      notice: 'TMDB_READ_ACCESS_TOKEN is not configured on the server.',
+    };
+  }
+
+  try {
+    const res = await tmdbFetch<{ success?: boolean; status_code?: number }>(
+      `/account/${accountId}/watchlist?session_id=${encodeURIComponent(sessionId)}`,
+      0,
+      {
+        method: 'POST',
+        body: {
+          media_type: mediaType,
+          media_id: mediaId,
+          watchlist,
+        },
+      }
+    );
+    return {
+      configured: true,
+      success: Boolean(res.success || res.status_code === 1 || res.status_code === 12 || res.status_code === 13),
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      success: false,
+      notice: `Unable to update TMDB watchlist (${err instanceof Error ? err.message : 'error'}).`,
+    };
+  }
+}
+
