@@ -6,7 +6,46 @@ import {
   filterWatchlistItems,
   validateSubtitleUrl,
 } from './mediaFilters';
-import { FALLBACK_MOVIES } from '../data/fallbackCatalog';
+import type { MediaSummary } from '../types/media';
+
+const SAMPLE_TEST_MOVIES: MediaSummary[] = [
+  {
+    id: 'movie_550',
+    mediaType: 'movie',
+    tmdbId: 550,
+    title: 'Fight Club',
+    overview: 'Drama feature test record.',
+    posterPath: null,
+    backdropPath: null,
+    releaseYear: '1999',
+    releaseDate: '1999-10-15',
+    voteAverage: 8.4,
+    voteCount: 25000,
+    popularity: 90,
+    originalLanguage: 'en',
+    genreIds: [18],
+    genres: ['Drama'],
+    source: 'tmdb',
+  },
+  {
+    id: 'movie_157336',
+    mediaType: 'movie',
+    tmdbId: 157336,
+    title: 'Interstellar',
+    overview: 'Sci-fi feature test record.',
+    posterPath: null,
+    backdropPath: null,
+    releaseYear: '2014',
+    releaseDate: '2014-11-05',
+    voteAverage: 8.7,
+    voteCount: 34000,
+    popularity: 120,
+    originalLanguage: 'en',
+    genreIds: [878, 18],
+    genres: ['Science Fiction', 'Drama'],
+    source: 'tmdb',
+  },
+];
 
 test('buildVidLinkUrl builds movie, tv, and anime URLs with required VidLink params', () => {
   const movie = buildVidLinkUrl({
@@ -56,9 +95,9 @@ test('validateSubtitleUrl allows only https URLs', () => {
 });
 
 test('filterCatalogMedia filters by genre, rating, and year', () => {
-  const sciFi = filterCatalogMedia(FALLBACK_MOVIES, { genre: 'Science Fiction', minRating: 8.5 });
+  const sciFi = filterCatalogMedia(SAMPLE_TEST_MOVIES, { genre: 'Science Fiction', minRating: 8.5 });
   assert.equal(sciFi.length, 1);
-  assert.equal(sciFi[0].title, 'Orbital Meridian');
+  assert.equal(sciFi[0].title, 'Interstellar');
 });
 
 test('filterWatchlistItems filters by type and sorts alphabetically', () => {

@@ -1,12 +1,5 @@
 import { apiCache } from './cache';
-import {
-  FALLBACK_MOVIES,
-  FALLBACK_TV_SERIES,
-  MOVIE_GENRES,
-  TV_GENRES,
-  buildFallbackDetails,
-} from '../src/data/fallbackCatalog';
-import { filterCatalogMedia } from '../src/utils/mediaFilters';
+import { MOVIE_GENRES, TV_GENRES } from '../src/data/genres';
 import type {
   CastMember,
   DiscoverFilters,
@@ -128,7 +121,6 @@ function mapTmdbSummary(raw: TmdbRawMedia, mediaType: 'movie' | 'tv'): MediaSumm
     episodeCount: raw.number_of_episodes,
     status: raw.status,
     source: 'tmdb',
-    isFallback: false,
   };
 }
 
@@ -173,16 +165,16 @@ async function tmdbFetch<T>(endpoint: string, ttlMs = 300_000): Promise<T> {
 
 export async function fetchTmdbGenres(type: 'movie' | 'tv'): Promise<{
   genres: GenreItem[];
-  source: 'tmdb' | 'local-fallback';
+  source: 'tmdb';
 }> {
   if (!isTmdbConfigured()) {
-    return { genres: type === 'movie' ? MOVIE_GENRES : TV_GENRES, source: 'local-fallback' };
+    return { genres: type === 'movie' ? MOVIE_GENRES : TV_GENRES, source: 'tmdb' };
   }
   try {
     const data = await tmdbFetch<{ genres: GenreItem[] }>(`/genre/${type}/list?language=en-US`, 3_600_000);
     return { genres: data.genres, source: 'tmdb' };
   } catch {
-    return { genres: type === 'movie' ? MOVIE_GENRES : TV_GENRES, source: 'local-fallback' };
+    return { genres: type === 'movie' ? MOVIE_GENRES : TV_GENRES, source: 'tmdb' };
   }
 }
 
@@ -194,28 +186,15 @@ export async function fetchTmdbCategory(
   const page = Math.max(1, Number(filters.page || 1));
 
   if (!isTmdbConfigured()) {
-    const pool = type === 'movie' ? FALLBACK_MOVIES : FALLBACK_TV_SERIES;
-    const filtered = filterCatalogMedia(pool, {
-      genre: filters.genreId,
-      year: filters.year,
-      minRating: filters.minRating ? Number(filters.minRating) : undefined,
-      language: filters.language,
-      sortBy:
-        filters.sortBy === 'vote_average.desc'
-          ? 'rating'
-          : filters.sortBy === 'primary_release_date.desc' || filters.sortBy === 'first_air_date.desc'
-            ? 'newest'
-            : 'popularity',
-    });
     return {
-      items: filtered,
+      items: [],
       page: 1,
       totalPages: 1,
-      totalResults: filtered.length,
-      source: 'local-fallback',
+      totalResults: 0,
+      source: 'tmdb',
       configured: false,
       notice:
-        'Local Development Catalog active: set TMDB_READ_ACCESS_TOKEN on the server to browse live TMDB metadata.',
+        'TMDB_READ_ACCESS_TOKEN is not configured on the server. Set TMDB_READ_ACCESS_TOKEN to browse live TMDB movies and TV shows.',
     };
   }
 
@@ -279,15 +258,14 @@ export async function fetchTmdbCategory(
       configured: true,
     };
   } catch (err) {
-    const pool = type === 'movie' ? FALLBACK_MOVIES : FALLBACK_TV_SERIES;
     return {
-      items: pool,
+      items: [],
       page: 1,
       totalPages: 1,
-      totalResults: pool.length,
-      source: 'local-fallback',
+      totalResults: 0,
+      source: 'tmdb',
       configured: true,
-      notice: `TMDB request unavailable (${err instanceof Error ? err.message : 'network error'}). Showing local fallback catalog.`,
+      notice: `TMDB request unavailable (${err instanceof Error ? err.message : 'network error'}).`,
     };
   }
 }
@@ -298,13 +276,20 @@ export async function fetchTmdbDetails(
 ): Promise<{ details: MediaDetails | null; configured: boolean; notice?: string }> {
   const numericId = Number(String(rawId).replace(/^(movie|tv)_/, ''));
 
-  if (!isTmdbConfigured() || !Number.isInteger(numericId) || numericId <= 0) {
+  if (!isTmdbConfigured()) {
     return {
-      details: buildFallbackDetails(rawId, type),
-      configured: isTmdbConfigured(),
-      notice: !isTmdbConfigured()
-        ? 'Local Development Catalog active: set TMDB_READ_ACCESS_TOKEN on the server for live TMDB details.'
-        : undefined,
+      details: null,
+      configured: false,
+      notice:
+        'TMDB_READ_ACCESS_TOKEN is not configured on the server. Set TMDB_READ_ACCESS_TOKEN to load live TMDB details.',
+    };
+  }
+
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    return {
+      details: null,
+      configured: true,
+      notice: 'Invalid TMDB identifier.',
     };
   }
 
@@ -374,7 +359,7 @@ export async function fetchTmdbDetails(
     return { details, configured: true };
   } catch (err) {
     return {
-      details: buildFallbackDetails(rawId, type),
+      details: null,
       configured: true,
       notice: `Unable to load live TMDB record (${err instanceof Error ? err.message : 'error'}).`,
     };
@@ -386,16 +371,7 @@ export async function fetchTmdbSeasonEpisodes(
   seasonNumber: number
 ): Promise<EpisodeSummary[]> {
   if (!isTmdbConfigured()) {
-    return Array.from({ length: 8 }, (_, idx) => ({
-      id: idx + 1,
-      episodeNumber: idx + 1,
-      seasonNumber,
-      name: `Episode ${idx + 1}`,
-      overview: 'Local development sample episode.',
-      stillPath: null,
-      airDate: '2025-01-01',
-      runtime: 45,
-    }));
+    return [];
   }
 
   try {
@@ -439,27 +415,20 @@ export async function searchTmdbMedia(
       page: 1,
       totalPages: 1,
       totalResults: 0,
-      source: isTmdbConfigured() ? 'tmdb' : 'local-fallback',
+      source: 'tmdb',
       configured: isTmdbConfigured(),
     };
   }
 
   if (!isTmdbConfigured()) {
-    const pool =
-      type === 'movie'
-        ? FALLBACK_MOVIES
-        : type === 'tv'
-          ? FALLBACK_TV_SERIES
-          : [...FALLBACK_MOVIES, ...FALLBACK_TV_SERIES];
-    const items = filterCatalogMedia(pool, { query: trimmed });
     return {
-      items,
+      items: [],
       page: 1,
       totalPages: 1,
-      totalResults: items.length,
-      source: 'local-fallback',
+      totalResults: 0,
+      source: 'tmdb',
       configured: false,
-      notice: 'Local Development Catalog search active. Configure TMDB_READ_ACCESS_TOKEN for full TMDB search.',
+      notice: 'TMDB_READ_ACCESS_TOKEN is not configured on the server. Configure it for live TMDB search.',
     };
   }
 
@@ -502,14 +471,12 @@ export async function searchTmdbMedia(
       configured: true,
     };
   } catch (err) {
-    const pool = [...FALLBACK_MOVIES, ...FALLBACK_TV_SERIES];
-    const items = filterCatalogMedia(pool, { query: trimmed });
     return {
-      items,
+      items: [],
       page: 1,
       totalPages: 1,
-      totalResults: items.length,
-      source: 'local-fallback',
+      totalResults: 0,
+      source: 'tmdb',
       configured: true,
       notice: `TMDB search failed (${err instanceof Error ? err.message : 'network error'}).`,
     };

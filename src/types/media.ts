@@ -1,6 +1,6 @@
 export type MediaType = 'movie' | 'tv' | 'anime';
 
-export type CatalogSource = 'tmdb' | 'jikan' | 'local-fallback' | 'admin-firestore';
+export type CatalogSource = 'tmdb' | 'jikan' | 'admin-firestore';
 
 export type VidLinkPlayerType = 'default' | 'jw';
 export type VidLinkIconsStyle = 'default' | 'vid';
@@ -68,7 +68,6 @@ export interface MediaSummary {
   seasonCount?: number;
   status?: string;
   source: CatalogSource;
-  isFallback?: boolean;
   featured?: boolean;
 }
 

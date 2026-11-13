@@ -237,7 +237,7 @@ export function SettingsPage() {
               {statusInfo
                 ? statusInfo.tmdbConfigured
                   ? 'Configured (Server-side)'
-                  : 'Not Configured (Local Development Catalog active)'
+                  : 'Not Configured (Set TMDB_READ_ACCESS_TOKEN)'
                 : 'Checking...'}
             </dd>
           </div>

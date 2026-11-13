@@ -24,6 +24,7 @@ interface AuthContextValue {
   registerWithEmail: (displayName: string, email: string, password: string) => Promise<boolean>;
   sendResetEmail: (email: string) => Promise<boolean>;
   resendVerification: () => Promise<boolean>;
+  refreshAuthSession: () => Promise<boolean>;
   updateUserProfileDetails: (displayName: string, photoURL: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
@@ -99,18 +100,34 @@ async function ensureUserProfileDoc(currentUser: User) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [, setUserVersion] = useState(0);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      setUser(nextUser);
-      setAuthReady(true);
-      if (nextUser && nextUser.emailVerified) {
-        void ensureUserProfileDoc(nextUser).catch((err) => {
-          console.error('Failed to sync user profile document:', err);
-        });
+      if (!nextUser) {
+        setUser(null);
+        setAuthReady(true);
+        return;
       }
+
+      void (async () => {
+        if (nextUser.emailVerified) {
+          try {
+            await nextUser.getIdToken(true);
+          } catch {
+            // proceed with cached token if network refresh fails
+          }
+        }
+        setUser(nextUser);
+        setAuthReady(true);
+        if (nextUser.emailVerified) {
+          void ensureUserProfileDoc(nextUser).catch((err) => {
+            console.error('Failed to sync user profile document:', err);
+          });
+        }
+      })();
     });
     return () => unsubscribe();
   }, []);
@@ -131,7 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     setAuthError(null);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      if (cred.user.emailVerified) {
+        try {
+          await cred.user.getIdToken(true);
+        } catch {
+          // ignore
+        }
+      }
       return true;
     } catch (error) {
       setAuthError(formatFirebaseAuthError(error));
@@ -175,6 +199,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshAuthSession = async () => {
+    setAuthError(null);
+    if (!auth.currentUser) return false;
+    try {
+      await auth.currentUser.reload();
+      await auth.currentUser.getIdToken(true);
+      setUser(auth.currentUser);
+      setUserVersion((v) => v + 1);
+      if (auth.currentUser.emailVerified) {
+        void ensureUserProfileDoc(auth.currentUser).catch((err) => {
+          console.error('Failed to sync user profile document:', err);
+        });
+      }
+      return auth.currentUser.emailVerified;
+    } catch (error) {
+      setAuthError(formatFirebaseAuthError(error));
+      return false;
+    }
+  };
+
   const updateUserProfileDetails = async (displayName: string, photoURL: string) => {
     setAuthError(null);
     if (!auth.currentUser) return false;
@@ -202,7 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           handleFirestoreError(error, OperationType.UPDATE, userPath);
         }
       }
-      setUser({ ...auth.currentUser });
+      setUser(auth.currentUser);
+      setUserVersion((v) => v + 1);
       return true;
     } catch (error) {
       setAuthError(formatFirebaseAuthError(error));
@@ -227,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerWithEmail,
         sendResetEmail,
         resendVerification,
+        refreshAuthSession,
         updateUserProfileDetails,
         logout,
       }}

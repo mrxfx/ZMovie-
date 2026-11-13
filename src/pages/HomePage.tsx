@@ -24,6 +24,7 @@ import {
 import { MediaCarousel } from '../components/MediaCarousel';
 import {
   CatalogNoticeBanner,
+  EmptyState,
   ErrorState,
   GridSkeleton,
   HeroSkeleton,
@@ -70,6 +71,7 @@ export function HomePage() {
       ...(data?.featured ? [data.featured] : []),
       ...(data?.trendingMovies || []),
       ...(data?.popularTv || []),
+      ...(data?.trendingAnime || []),
       ...adminMediaSummaries,
     ];
     const seen = new Set<string>();
@@ -156,6 +158,18 @@ export function HomePage() {
         </div>
       ) : error ? (
         <ErrorState message={error} onRetry={() => void loadHome()} />
+      ) : heroSlides.length === 0 &&
+        recommendedBento.length === 0 &&
+        adminMediaSummaries.length === 0 &&
+        (data?.trendingMovies.length || 0) === 0 &&
+        (data?.popularTv.length || 0) === 0 &&
+        (data?.trendingAnime.length || 0) === 0 ? (
+        <EmptyState
+          title="No catalog titles available yet"
+          description="Set TMDB_READ_ACCESS_TOKEN on the server for live TMDB movies and series, browse live Anime, or publish custom titles in the Admin Studio."
+          actionLabel="Open Admin Studio"
+          actionTo="/admin"
+        />
       ) : (
         <>
           {/* Full-Width Spatial Bento Grid Stage */}
@@ -318,11 +332,7 @@ export function HomePage() {
                           >
                             {item.backdropPath || item.posterPath ? (
                               <img
-                                src={
-                                  item.isFallback
-                                    ? item.posterPath || item.backdropPath || ''
-                                    : item.backdropPath || item.posterPath || ''
-                                }
+                                src={item.backdropPath || item.posterPath || ''}
                                 alt={item.title}
                                 loading="lazy"
                                 referrerPolicy="no-referrer"
@@ -413,7 +423,7 @@ export function HomePage() {
                   </div>
 
                   <div className="space-y-3">
-                    {upcomingSideCards.map((item, idx) => (
+                    {upcomingSideCards.map((item) => (
                       <article
                         key={item.id}
                         className="group relative aspect-[16/9] rounded-2xl overflow-hidden border border-white/15 bg-zinc-900"
@@ -425,11 +435,7 @@ export function HomePage() {
                         >
                           {item.backdropPath || item.posterPath ? (
                             <img
-                              src={
-                                item.isFallback && idx > 0
-                                  ? item.posterPath || item.backdropPath || ''
-                                  : item.backdropPath || item.posterPath || ''
-                              }
+                              src={item.backdropPath || item.posterPath || ''}
                               alt={item.title}
                               loading="lazy"
                               referrerPolicy="no-referrer"

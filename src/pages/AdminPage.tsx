@@ -28,15 +28,6 @@ import { GlassBadge, GlassButton, GlassModal, GlassPanel } from '../components/g
 import { EmptyState, GridSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
-const STUDIO_POSTER_PRESETS = [
-  { label: 'Sci-Fi Odyssey', path: '/src/assets/images/poster_scifi_odyssey_1794573963795.jpg' },
-  { label: 'Noir Thriller', path: '/src/assets/images/poster_noir_thriller_1794573964910.jpg' },
-  { label: 'Anime Chronicle', path: '/src/assets/images/poster_anime_chronicle_1794573964598.jpg' },
-  { label: 'Series Horizon', path: '/src/assets/images/poster_series_horizon_1794573966000.jpg' },
-];
-
-const HERO_BACKDROP_PRESET = '/src/assets/images/hero_cinema_backdrop_1794573963819.jpg';
-
 const INPUT_CLASS =
   'w-full px-3.5 py-2.5 rounded-xl bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/45 transition-all';
 
@@ -62,13 +53,13 @@ const EMPTY_FORM: FormState = {
   mediaType: 'movie',
   title: '',
   overview: '',
-  posterPath: STUDIO_POSTER_PRESETS[0].path,
-  backdropPath: HERO_BACKDROP_PRESET,
+  posterPath: '',
+  backdropPath: '',
   releaseYear: String(new Date().getFullYear()),
-  voteAverage: '8.4',
-  runtime: '118',
+  voteAverage: '0',
+  runtime: '',
   originalLanguage: 'en',
-  genresText: 'Action, Drama',
+  genresText: '',
   tmdbId: '',
   malId: '',
   seasonCount: '1',
@@ -83,7 +74,15 @@ export function AdminPage() {
     path: '/admin',
   });
 
-  const { user, authReady, authError, signInWithGoogle, resendVerification, logout } = useAuth();
+  const {
+    user,
+    authReady,
+    authError,
+    signInWithGoogle,
+    resendVerification,
+    refreshAuthSession,
+    logout,
+  } = useAuth();
   const {
     adminItems,
     loadingAdminCatalog,
@@ -357,9 +356,14 @@ export function AdminPage() {
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             {!user.emailVerified && (
-              <GlassButton variant="primary" size="md" onClick={() => void resendVerification()}>
-                Resend Verification Email
-              </GlassButton>
+              <>
+                <GlassButton variant="primary" size="md" onClick={() => void refreshAuthSession()}>
+                  Refresh Verification Status
+                </GlassButton>
+                <GlassButton variant="glass" size="md" onClick={() => void resendVerification()}>
+                  Resend Verification Email
+                </GlassButton>
+              </>
             )}
             <GlassButton variant="glass" size="md" onClick={() => void logout()}>
               <LogOut className="w-4 h-4" />
@@ -684,7 +688,7 @@ export function AdminPage() {
             <div className="pt-3 border-t border-white/15 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label htmlFor="admin-poster-url" className="text-xs font-semibold">
-                  Poster Artwork (URL, Preset, or Compressed File Upload)
+                  Poster Artwork (HTTPS URL or Compressed File Upload)
                 </label>
                 <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-control text-xs font-semibold cursor-pointer hover:border-[#E50914]">
                   <Upload className="w-3.5 h-3.5 text-[#E50914]" />
@@ -705,22 +709,6 @@ export function AdminPage() {
                 placeholder="https://image.tmdb.org/t/p/w500/... or upload an image file"
                 className={INPUT_CLASS}
               />
-              <div className="flex flex-wrap items-center gap-2">
-                {STUDIO_POSTER_PRESETS.map((preset) => (
-                  <button
-                    key={preset.path}
-                    type="button"
-                    onClick={() => setForm((p) => ({ ...p, posterPath: preset.path }))}
-                    className={`px-3 py-1 rounded-full text-xs border transition-colors cursor-pointer ${
-                      form.posterPath === preset.path
-                        ? 'border-[#E50914] bg-[#E50914]/20 text-white font-semibold'
-                        : 'glass-control text-white/75 hover:text-white'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Backdrop Artwork Upload or URL */}
@@ -745,7 +733,7 @@ export function AdminPage() {
                 type="text"
                 value={form.backdropPath}
                 onChange={(e) => setForm((p) => ({ ...p, backdropPath: e.target.value }))}
-                placeholder="https://... or /src/assets/images/..."
+                placeholder="https://image.tmdb.org/t/p/w1280/... or upload an image file"
                 className={INPUT_CLASS}
               />
             </div>

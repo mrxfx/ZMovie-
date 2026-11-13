@@ -47,7 +47,12 @@ async function startServer() {
         fetchAnimeList('trending'),
       ]);
 
-      const featured = trendingM.items[0] || popularM.items[0] || null;
+      const featured =
+        trendingM.items[0] ||
+        popularM.items[0] ||
+        popularT.items[0] ||
+        trendingA.items[0] ||
+        null;
       const recommended = [
         ...topRatedM.items.slice(0, 4),
         ...popularT.items.slice(0, 3),
@@ -117,7 +122,7 @@ async function startServer() {
   app.get('/api/movie/:id', async (req, res) => {
     const result = await fetchTmdbDetails('movie', req.params.id);
     if (!result.details) {
-      return res.status(404).json({ error: 'Movie not found' });
+      return res.status(404).json({ error: result.notice || 'Movie not found' });
     }
     return res.json(result);
   });
@@ -125,7 +130,7 @@ async function startServer() {
   app.get('/api/tv/:id', async (req, res) => {
     const result = await fetchTmdbDetails('tv', req.params.id);
     if (!result.details) {
-      return res.status(404).json({ error: 'TV series not found' });
+      return res.status(404).json({ error: result.notice || 'TV series not found' });
     }
     return res.json(result);
   });
@@ -157,7 +162,7 @@ async function startServer() {
   app.get('/api/anime/:malId', async (req, res) => {
     const result = await fetchAnimeDetails(req.params.malId);
     if (!result.details) {
-      return res.status(404).json({ error: 'Anime not found' });
+      return res.status(404).json({ error: result.notice || 'Anime not found' });
     }
     return res.json(result);
   });
@@ -174,7 +179,7 @@ async function startServer() {
         page: 1,
         totalPages: 1,
         totalResults: 0,
-        source: isTmdbConfigured() ? 'tmdb' : 'local-fallback',
+        source: 'tmdb',
         configured: isTmdbConfigured(),
       });
     }

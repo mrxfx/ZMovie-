@@ -11,7 +11,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { OperationType, handleFirestoreError } from '../lib/firestoreError';
 import { useAuth } from './AuthContext';
 import type {
@@ -253,8 +253,14 @@ export function AdminCatalogProvider({ children }: { children: React.ReactNode }
 
   const createCatalogItem = useCallback(
     async (input: AdminCatalogInput): Promise<AdminCatalogItem> => {
-      if (!user || !isAdminUser) {
+      const currentUser = auth.currentUser;
+      if (!user || !currentUser || !isAdminUser) {
         throw new Error('Verified administrator sign-in is required to publish titles.');
+      }
+      await currentUser.reload().catch(() => {});
+      await currentUser.getIdToken(true);
+      if (!currentUser.emailVerified) {
+        throw new Error('Your administrator email must be verified before publishing.');
       }
 
       const randomSuffix = Math.random().toString(36).slice(2, 7);
@@ -343,8 +349,14 @@ export function AdminCatalogProvider({ children }: { children: React.ReactNode }
 
   const updateCatalogItem = useCallback(
     async (itemId: string, input: AdminCatalogInput): Promise<void> => {
-      if (!user || !isAdminUser) {
+      const currentUser = auth.currentUser;
+      if (!user || !currentUser || !isAdminUser) {
         throw new Error('Verified administrator sign-in is required to update titles.');
+      }
+      await currentUser.reload().catch(() => {});
+      await currentUser.getIdToken(true);
+      if (!currentUser.emailVerified) {
+        throw new Error('Your administrator email must be verified before updating titles.');
       }
 
       const path = `catalogItems/${itemId}`;
@@ -406,8 +418,14 @@ export function AdminCatalogProvider({ children }: { children: React.ReactNode }
 
   const deleteCatalogItem = useCallback(
     async (itemId: string): Promise<void> => {
-      if (!user || !isAdminUser) {
+      const currentUser = auth.currentUser;
+      if (!user || !currentUser || !isAdminUser) {
         throw new Error('Verified administrator sign-in is required to delete titles.');
+      }
+      await currentUser.reload().catch(() => {});
+      await currentUser.getIdToken(true);
+      if (!currentUser.emailVerified) {
+        throw new Error('Your administrator email must be verified before deleting titles.');
       }
       const path = `catalogItems/${itemId}`;
       try {

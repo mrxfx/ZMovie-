@@ -16,7 +16,7 @@ import {
 import { useSeoMetadata } from '../utils/seo';
 import { GLASS_SPRING } from '../styles/glassTokens';
 
-const QUICK_SUGGESTIONS = ['Orbital', 'Chronicle', 'Inception', 'Breaking', 'Attack on Titan'];
+const QUICK_SUGGESTIONS = ['Inception', 'Interstellar', 'Breaking Bad', 'Attack on Titan', 'Spirited Away'];
 
 export function SearchPage() {
   useSeoMetadata({

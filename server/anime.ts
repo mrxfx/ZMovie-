@@ -1,6 +1,5 @@
 import { apiCache } from './cache';
-import { ANIME_GENRES, FALLBACK_ANIME, buildFallbackDetails } from '../src/data/fallbackCatalog';
-import { filterCatalogMedia } from '../src/utils/mediaFilters';
+import { ANIME_GENRES } from '../src/data/genres';
 import type {
   CastMember,
   DiscoverFilters,
@@ -68,7 +67,6 @@ function mapJikanSummary(raw: JikanAnimeRaw): MediaSummary {
     episodeCount: raw.episodes ?? undefined,
     status: raw.status ?? undefined,
     source: 'jikan',
-    isFallback: false,
   };
 }
 
@@ -84,7 +82,7 @@ async function jikanFetch<T>(endpoint: string, ttlMs = 600_000): Promise<T> {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1800);
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
     const res = await fetch(`${JIKAN_BASE_URL}${endpoint}`, {
@@ -115,9 +113,6 @@ export async function fetchAnimeList(
   filters: DiscoverFilters & { query?: string } = {}
 ): Promise<PagedCatalogResponse> {
   const page = Math.max(1, Number(filters.page || 1));
-  const fallbackCacheKey = `jikan:fallback:${category}:${JSON.stringify(filters)}`;
-  const cachedFallback = apiCache.get<PagedCatalogResponse>(fallbackCacheKey);
-  if (cachedFallback) return cachedFallback;
 
   try {
     let endpoint = '';
@@ -179,29 +174,15 @@ export async function fetchAnimeList(
       configured: true,
     };
   } catch (err) {
-    const filtered = filterCatalogMedia(FALLBACK_ANIME, {
-      query: filters.query,
-      genre: filters.genreId,
-      year: filters.year,
-      minRating: filters.minRating ? Number(filters.minRating) : undefined,
-      sortBy:
-        filters.sortBy === 'vote_average.desc' || filters.sortBy === 'rating'
-          ? 'rating'
-          : filters.sortBy === 'newest'
-            ? 'newest'
-            : 'popularity',
-    });
-    const fallbackResponse: PagedCatalogResponse = {
-      items: filtered,
+    return {
+      items: [],
       page: 1,
       totalPages: 1,
-      totalResults: filtered.length,
-      source: 'local-fallback',
+      totalResults: 0,
+      source: 'jikan',
       configured: true,
-      notice: `Jikan/MAL anime API unavailable (${err instanceof Error ? err.message : 'offline'}). Showing local anime fallback catalog.`,
+      notice: `Jikan/MAL anime API unavailable (${err instanceof Error ? err.message : 'offline'}).`,
     };
-    apiCache.set(fallbackCacheKey, fallbackResponse, 60_000);
-    return fallbackResponse;
   }
 }
 
@@ -212,8 +193,8 @@ export async function fetchAnimeDetails(rawId: string): Promise<{
   const malId = Number(String(rawId).replace(/^anime_/, ''));
   if (!Number.isInteger(malId) || malId <= 0) {
     return {
-      details: buildFallbackDetails(rawId, 'anime'),
-      notice: 'Local Development Anime Catalog record.',
+      details: null,
+      notice: 'Invalid MyAnimeList (MAL) anime identifier.',
     };
   }
 
@@ -329,7 +310,7 @@ export async function fetchAnimeDetails(rawId: string): Promise<{
     return { details };
   } catch (err) {
     return {
-      details: buildFallbackDetails(rawId, 'anime'),
+      details: null,
       notice: `Unable to load live MAL/Jikan anime details (${err instanceof Error ? err.message : 'error'}).`,
     };
   }
