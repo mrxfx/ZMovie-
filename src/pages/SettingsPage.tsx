@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
 import { fetchApiStatus } from '../services/catalogApi';
 import { GlassButton, GlassPanel } from '../components/glass';
+import { PWAInstallButton } from '../components/PWAComponents';
 import { useSeoMetadata } from '../utils/seo';
 
 export function SettingsPage() {
@@ -227,11 +228,17 @@ export function SettingsPage() {
         </div>
       </GlassPanel>
 
+      {/* App Installation (PWA) */}
+      <GlassPanel variant="default" padding="lg" className="rounded-3xl space-y-4">
+        <h2 className="font-display text-lg font-bold text-white">App Installation</h2>
+        <PWAInstallButton variant="card" />
+      </GlassPanel>
+
       {/* Integration Status */}
       <GlassPanel variant="default" padding="lg" className="rounded-3xl space-y-3">
         <h2 className="font-display text-lg font-bold text-white">Provider Integration Status</h2>
-        <dl className="text-sm space-y-2.5 text-white/65">
-          <div className="flex justify-between gap-4">
+        <dl className="text-sm space-y-3 text-white/65">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
             <dt>TMDB Server Read Access Token</dt>
             <dd className="font-semibold text-white">
               {statusInfo
@@ -241,22 +248,22 @@ export function SettingsPage() {
                 : 'Checking...'}
             </dd>
           </div>
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
             <dt>Anime Metadata Adapter</dt>
             <dd className="font-semibold text-white">
               MyAnimeList / Jikan v4 (Separate MAL IDs)
             </dd>
           </div>
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
             <dt>Streaming Embed Adapter</dt>
             <dd className="font-semibold text-white">
               VidLink Pro (Default &amp; JW Player)
             </dd>
           </div>
-          <div className="flex justify-between gap-4 pt-2 border-t border-white/15">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 pt-2 border-t border-white/15">
             <dt>Catalog Publishing Studio</dt>
             <dd>
-              <Link to="/admin" className="font-semibold text-[#E50914] hover:underline">
+              <Link to="/admin" className="font-semibold text-[#E50914] hover:underline inline-flex items-center min-h-[44px] sm:min-h-0">
                 Open Admin Panel
               </Link>
             </dd>

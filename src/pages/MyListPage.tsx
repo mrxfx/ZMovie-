@@ -62,8 +62,8 @@ export function MyListPage() {
 
       {/* Glass Filters & Search */}
       {watchlist.length > 0 && (
-        <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
+        <GlassPanel variant="subtle" padding="sm" className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-4 sm:flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
             {(['all', 'movie', 'tv', 'anime'] as const).map((t) => {
               const active = mediaType === t;
               return (
@@ -71,7 +71,7 @@ export function MyListPage() {
                   key={t}
                   type="button"
                   onClick={() => setMediaType(t)}
-                  className={`relative px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                  className={`relative px-2 sm:px-3.5 py-1.5 min-h-[44px] sm:min-h-[36px] rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer inline-flex items-center justify-center whitespace-nowrap ${
                     active
                       ? 'text-white font-semibold'
                       : 'text-white/70 hover:text-white'
@@ -92,31 +92,33 @@ export function MyListPage() {
             })}
           </div>
 
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search className="w-4 h-4 text-white/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="search"
-              aria-label="Filter My List by title"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter saved titles..."
-              className="w-full pl-9 pr-3.5 py-2 rounded-full bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-white/45"
-            />
-          </div>
+          <div className="flex items-center gap-2 sm:flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
+              <Search className="w-4 h-4 text-white/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                aria-label="Filter My List by title"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter saved titles..."
+                className="w-full min-h-[44px] sm:min-h-[38px] pl-9 pr-3.5 py-2 rounded-full bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-white/45"
+              />
+            </div>
 
-          <select
-            aria-label="Sort My List"
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(e.target.value as 'added_desc' | 'title_asc' | 'rating_desc' | 'year_desc')
-            }
-            className="px-3.5 py-2 rounded-full glass-control text-sm text-white ml-auto focus:outline-none focus:border-white/45"
-          >
-            <option value="added_desc">Recently Added</option>
-            <option value="title_asc">Title (A–Z)</option>
-            <option value="rating_desc">Highest Rated</option>
-            <option value="year_desc">Release Year</option>
-          </select>
+            <select
+              aria-label="Sort My List"
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(e.target.value as 'added_desc' | 'title_asc' | 'rating_desc' | 'year_desc')
+              }
+              className="min-h-[44px] sm:min-h-[38px] px-3 py-2 rounded-full glass-control text-xs sm:text-sm text-white sm:ml-auto shrink-0 focus:outline-none focus:border-white/45"
+            >
+              <option value="added_desc">Recently Added</option>
+              <option value="title_asc">Title (A–Z)</option>
+              <option value="rating_desc">Highest Rated</option>
+              <option value="year_desc">Release Year</option>
+            </select>
+          </div>
         </GlassPanel>
       )}
 
@@ -138,7 +140,7 @@ export function MyListPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-5">
           {filtered.map((item) => {
             const summary: MediaSummary = {
               id: item.mediaId,

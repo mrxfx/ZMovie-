@@ -84,16 +84,16 @@ export function GlassPlayerControls({
       </div>
 
       {/* Engine & Icon Controls + Subtitles toggle */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="space-y-1.5">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-3.5 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
+          <div className="space-y-1.5 min-w-0">
             <span className="block text-xs font-medium text-white/65">
               Player Engine
             </span>
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
+            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15 max-w-full">
               {(
                 [
-                  { id: 'default', label: 'Default Player' },
+                  { id: 'default', label: 'Default' },
                   { id: 'jw', label: 'JW Player' },
                 ] as const
               ).map((opt) => (
@@ -101,7 +101,7 @@ export function GlassPlayerControls({
                   key={opt.id}
                   type="button"
                   onClick={() => onPlayerTypeChange(opt.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     playerType === opt.id
                       ? 'bg-[#E50914] text-white shadow-sm'
                       : 'text-white/75 hover:text-white'
@@ -113,14 +113,14 @@ export function GlassPlayerControls({
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <span className="block text-xs font-medium text-white/65">
               Icon Theme
             </span>
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
+            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15 max-w-full">
               {(
                 [
-                  { id: 'default', label: 'Default Icons' },
+                  { id: 'default', label: 'Default' },
                   { id: 'vid', label: 'Vid Icons' },
                 ] as const
               ).map((opt) => (
@@ -128,7 +128,7 @@ export function GlassPlayerControls({
                   key={opt.id}
                   type="button"
                   onClick={() => onIconStyleChange(opt.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     iconStyle === opt.id
                       ? 'bg-[#E50914] text-white shadow-sm'
                       : 'text-white/75 hover:text-white'
@@ -145,64 +145,67 @@ export function GlassPlayerControls({
           variant={showSubtitlesPanel ? 'primary' : 'glass'}
           size="sm"
           onClick={onToggleSubtitlesPanel}
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px]"
         >
           <Subtitles className="w-3.5 h-3.5" />
-          Subtitles & Fallback
+          Subtitles &amp; Fallback
         </GlassButton>
       </div>
 
       {/* TV / Anime Episode Navigation & Audio Controls */}
       {(mediaType === 'tv' || mediaType === 'anime') && (
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/15">
-          {mediaType === 'tv' && seasons.length > 0 && onSeasonChange && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="player-season" className="text-xs font-medium text-white/65">
-                Season
-              </label>
-              <select
-                id="player-season"
-                value={season}
-                onChange={(e) => onSeasonChange(Number(e.target.value))}
-                className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm font-medium text-white focus:outline-none focus:border-white/40"
-              >
-                {seasons.map((s) => (
-                  <option key={s.id} value={s.seasonNumber}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 pt-4 border-t border-white/15">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
+            {mediaType === 'tv' && seasons.length > 0 && onSeasonChange && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 min-w-0">
+                <label htmlFor="player-season" className="text-xs font-medium text-white/65">
+                  Season
+                </label>
+                <select
+                  id="player-season"
+                  value={season}
+                  onChange={(e) => onSeasonChange(Number(e.target.value))}
+                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 rounded-full glass-control text-xs sm:text-sm font-medium text-white focus:outline-none focus:border-white/40"
+                >
+                  {seasons.map((s) => (
+                    <option key={s.id} value={s.seasonNumber}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          {onEpisodeChange && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="player-episode" className="text-xs font-medium text-white/65">
-                Episode
-              </label>
-              <select
-                id="player-episode"
-                value={episode}
-                onChange={(e) => onEpisodeChange(Number(e.target.value))}
-                className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm font-medium text-white focus:outline-none focus:border-white/40"
-              >
-                {Array.from({ length: maxEpisodes }, (_, i) => i + 1).map((epNum) => (
-                  <option key={epNum} value={epNum}>
-                    Episode {epNum}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+            {onEpisodeChange && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 min-w-0">
+                <label htmlFor="player-episode" className="text-xs font-medium text-white/65">
+                  Episode
+                </label>
+                <select
+                  id="player-episode"
+                  value={episode}
+                  onChange={(e) => onEpisodeChange(Number(e.target.value))}
+                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 rounded-full glass-control text-xs sm:text-sm font-medium text-white focus:outline-none focus:border-white/40"
+                >
+                  {Array.from({ length: maxEpisodes }, (_, i) => i + 1).map((epNum) => (
+                    <option key={epNum} value={epNum}>
+                      Episode {epNum}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           {mediaType === 'anime' && (
-            <>
+            <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
                 {(['sub', 'dub'] as const).map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => onAnimeAudioChange(mode)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase transition-all cursor-pointer ${
+                    className={`px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-full text-xs font-semibold uppercase transition-all cursor-pointer ${
                       animeAudio === mode
                         ? 'bg-[#E50914] text-white shadow-sm'
                         : 'text-white/75 hover:text-white'
@@ -217,7 +220,7 @@ export function GlassPlayerControls({
                 type="button"
                 onClick={() => onAnimeFallbackChange(!animeFallback)}
                 aria-pressed={animeFallback}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] sm:min-h-0 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                   animeFallback
                     ? 'bg-[#E50914]/25 border-[#E50914]/60 text-white'
                     : 'glass-control text-white/75'
@@ -226,16 +229,17 @@ export function GlassPlayerControls({
                 <Check className={`w-3.5 h-3.5 ${animeFallback ? 'opacity-100' : 'opacity-35'}`} />
                 Auto-fallback Sub/Dub
               </button>
-            </>
+            </div>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
             {onPrevEpisode && (
               <GlassButton
                 variant="glass"
                 size="sm"
                 disabled={episode <= 1}
                 onClick={onPrevEpisode}
+                className="min-h-[44px] sm:min-h-[38px]"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Prev Ep
@@ -247,6 +251,7 @@ export function GlassPlayerControls({
                 size="sm"
                 disabled={episode >= maxEpisodes}
                 onClick={onNextEpisode}
+                className="min-h-[44px] sm:min-h-[38px]"
               >
                 Next Ep
                 <ChevronRight className="w-4 h-4" />

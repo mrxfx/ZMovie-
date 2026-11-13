@@ -1,37 +1,38 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { GlassHeader, GlassBottomNavigation } from './glass';
+import { OfflineIndicator } from './PWAComponents';
 import ambientBackdrop from '../assets/images/hero_cinema_backdrop_1794573963819.jpg';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen w-full max-w-none m-0 text-white flex flex-col">
-      {/* Softly Blurred Spatial Ambient Backdrop */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none bg-[#0D0F14]">
+    <div className="relative min-h-screen min-h-dvh w-full min-w-0 max-w-none m-0 text-white flex flex-col">
+      {/* Softly Blurred Spatial Ambient Backdrop (GPU-friendly gradient on mobile, blurred cinema frame on md+) */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none bg-[#151922] bg-[radial-gradient(ellipse_at_top,_rgba(229,9,20,0.14)_0%,_rgba(21,25,34,0.92)_48%,_#0d0f14_100%)]">
         <img
           src={ambientBackdrop}
           alt=""
           aria-hidden="true"
-          className="w-full h-full object-cover scale-110 blur-[26px] brightness-[0.58] saturate-125"
+          className="hidden md:block w-full h-full object-cover scale-110 blur-[26px] brightness-[0.58] saturate-125"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/45 via-[#0f131c]/40 to-black/65" />
+        <div className="hidden md:block absolute inset-0 bg-gradient-to-br from-black/45 via-[#0f131c]/40 to-black/65" />
       </div>
 
       {/* Full-Width Glass Application Shell */}
-      <div className="w-full max-w-none m-0 flex-1 flex flex-col min-h-screen pb-24 sm:pb-28">
+      <div className="w-full min-w-0 max-w-none m-0 flex-1 flex flex-col min-h-screen min-h-dvh pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:pb-28">
         {/* Full-Width Sticky Liquid Glass Top Header */}
         <GlassHeader />
 
         {/* Full-Width Main Content Area */}
-        <main className="w-full max-w-none flex-1 px-4 sm:px-6 lg:px-10 xl:px-12 pb-8 pt-4">
+        <main className="w-full min-w-0 max-w-none flex-1 px-3.5 sm:px-6 lg:px-10 xl:px-12 pb-6 sm:pb-8 pt-2.5 sm:pt-4">
           {children}
         </main>
 
         {/* Full-Width Frosted Footer with TMDB & Jikan Attribution */}
-        <footer className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 pb-6 pt-2">
-          <div className="glass-white rounded-3xl px-5 sm:px-8 py-6 sm:py-7">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8">
-              <div className="md:col-span-2 space-y-2.5">
+        <footer className="w-full min-w-0 px-3.5 sm:px-6 lg:px-10 xl:px-12 pb-4 sm:pb-6 pt-2">
+          <div className="glass-white rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-5 sm:py-7">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 sm:gap-8">
+              <div className="col-span-2 space-y-2">
                 <Link
                   to="/"
                   className="font-display text-lg font-extrabold tracking-tight inline-flex items-center gap-1.5"
@@ -133,6 +134,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
       </div>
+
+      {/* Offline Connectivity Indicator */}
+      <OfflineIndicator />
 
       {/* Centered Floating Liquid Glass Bottom Navigation */}
       <GlassBottomNavigation />

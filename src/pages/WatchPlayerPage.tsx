@@ -110,6 +110,7 @@ export function WatchPlayerPage() {
   });
 
   useEffect(() => {
+    let active = true;
     const adminMatch = findAdminMediaById(mediaType, id);
     if (adminMatch) {
       const converted = toMediaDetails(adminMatch);
@@ -117,25 +118,37 @@ export function WatchPlayerPage() {
       setEpisodes(converted.episodes || []);
       setError(null);
       setLoading(false);
-      return;
+      return () => {
+        active = false;
+      };
     }
 
-    if (!/^\d+$/.test(id.trim()) && loadingAdminCatalog) {
+    if (loadingAdminCatalog) {
       setLoading(true);
-      return;
+      return () => {
+        active = false;
+      };
     }
 
     setLoading(true);
     setError(null);
     void fetchMediaDetails(mediaType, id)
       .then((res) => {
+        if (!active) return;
         setDetails(res.details);
         setEpisodes(res.details.episodes || []);
       })
       .catch((err) => {
+        if (!active) return;
         setError(err instanceof Error ? err.message : 'Unable to load media metadata.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [mediaType, id, findAdminMediaById, toMediaDetails, loadingAdminCatalog]);
 
   useEffect(() => {
@@ -414,19 +427,29 @@ export function WatchPlayerPage() {
   const maxEpisodes = episodes.length > 0 ? episodes.length : details.episodeCount || 24;
 
   return (
-    <div className="w-full pt-2 space-y-6">
+    <div className="w-full min-w-0 pt-1 sm:pt-2 space-y-4 sm:space-y-6">
       {/* Floating Glass Top Bar */}
-      <GlassPanel variant="default" padding="sm" className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <GlassButton variant="glass" size="sm" to={`/${shortTypeCode}/${id}`}>
+      <GlassPanel
+        variant="default"
+        padding="sm"
+        className="flex items-center justify-between gap-2.5 sm:gap-4 rounded-2xl sm:rounded-3xl"
+      >
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <GlassButton
+            variant="glass"
+            size="sm"
+            to={`/${shortTypeCode}/${id}`}
+            className="min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5"
+          >
             <ArrowLeft className="w-4 h-4" />
-            Back to Details
+            <span className="hidden sm:inline">Back to Details</span>
+            <span className="sm:hidden">Back</span>
           </GlassButton>
-          <div>
-            <h1 className="font-display text-lg sm:text-xl font-bold text-white line-clamp-1">
+          <div className="min-w-0">
+            <h1 className="font-display text-sm sm:text-xl font-bold text-white line-clamp-1">
               {details.title}
             </h1>
-            <p className="text-xs text-white/65 font-mono-tabular">
+            <p className="text-[11px] sm:text-xs text-white/65 font-mono-tabular truncate">
               {mediaType === 'tv'
                 ? `Season ${season} · Episode ${episode}`
                 : mediaType === 'anime'
@@ -436,15 +459,21 @@ export function WatchPlayerPage() {
           </div>
         </div>
 
-        <GlassButton variant="glass" size="sm" onClick={handleFullscreen}>
+        <GlassButton
+          variant="glass"
+          size="sm"
+          onClick={handleFullscreen}
+          aria-label="Toggle Fullscreen"
+          className="min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5 shrink-0"
+        >
           <Maximize2 className="w-4 h-4" />
-          Fullscreen
+          <span className="hidden sm:inline">Fullscreen</span>
         </GlassButton>
       </GlassPanel>
 
       {/* Existing Resume Banner */}
       {existingCheckpoint && existingCheckpoint.progressPercent > 0 && (
-        <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center justify-between gap-3 text-sm text-white/85">
+        <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center justify-between gap-3 text-sm text-white/85 rounded-2xl">
           <span>
             Last synced checkpoint:{' '}
             <strong className="font-mono-tabular text-white">
@@ -460,7 +489,7 @@ export function WatchPlayerPage() {
                   setResumeFromCheckpoint((prev) => !prev);
                   setIframeLoaded(false);
                 }}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/85 hover:text-white cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/85 hover:text-white cursor-pointer min-h-[36px]"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 {resumeFromCheckpoint
@@ -478,50 +507,52 @@ export function WatchPlayerPage() {
         </GlassPanel>
       )}
 
-      {/* Player Theater Frame */}
+      {/* Player Theater Frame (responsive 16:9 when active, natural height for prompts so mobile never clips) */}
       <div
         ref={playerContainerRef}
-        className="relative aspect-video w-full rounded-3xl overflow-hidden bg-zinc-950 glass-surface shadow-[0_28px_64px_-16px_rgba(17,24,39,0.4)]"
+        className={`relative w-full max-w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-zinc-950 glass-surface shadow-[0_28px_64px_-16px_rgba(17,24,39,0.4)] ${
+          vidLinkResult.url && providerAuthorized ? 'aspect-video' : 'sm:aspect-video'
+        }`}
       >
         {!vidLinkResult.url ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950/95">
-            <div className="glass-dark rounded-3xl p-6 sm:p-8 max-w-lg space-y-4">
-              <AlertTriangle className="w-10 h-10 text-[#E50914] mx-auto" />
-              <h2 className="font-display text-xl font-bold">
+          <div className="relative sm:absolute sm:inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center text-white bg-zinc-950/95">
+            <div className="glass-dark rounded-2xl sm:rounded-3xl p-4 sm:p-8 max-w-lg w-full space-y-3 sm:space-y-4">
+              <AlertTriangle className="w-8 h-8 sm:w-10 sm:h-10 text-[#E50914] mx-auto" />
+              <h2 className="font-display text-base sm:text-xl font-bold">
                 External Stream Unavailable Without Provider ID
               </h2>
-              <p className="text-sm text-zinc-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                 {vidLinkResult.reason} Configure <code className="text-white">TMDB_READ_ACCESS_TOKEN</code>{' '}
                 on the server, assign a TMDB/MAL ID in the Admin Panel, or browse live anime records.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-                <GlassButton variant="primary" size="md" to={`/${shortTypeCode}/${id}`}>
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 pt-1">
+                <GlassButton variant="primary" size="md" to={`/${shortTypeCode}/${id}`} className="min-h-[44px]">
                   Return to Details
                 </GlassButton>
-                <GlassButton variant="darkGlass" size="md" to="/settings">
+                <GlassButton variant="darkGlass" size="md" to="/settings" className="min-h-[44px]">
                   Check Provider Status
                 </GlassButton>
               </div>
             </div>
           </div>
         ) : !providerAuthorized ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950/95">
-            <div className="glass-dark rounded-3xl p-6 sm:p-8 max-w-xl space-y-4">
-              <ShieldCheck className="w-10 h-10 text-[#E50914] mx-auto" />
-              <h2 className="font-display text-xl font-bold">
+          <div className="relative sm:absolute sm:inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center text-white bg-zinc-950/95">
+            <div className="glass-dark rounded-2xl sm:rounded-3xl p-4 sm:p-8 max-w-xl w-full space-y-3 sm:space-y-4">
+              <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 text-[#E50914] mx-auto" />
+              <h2 className="font-display text-base sm:text-xl font-bold">
                 Third-Party Streaming Provider Notice
               </h2>
-              <p className="text-sm text-zinc-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                 ZyvoMovie embeds external playback via VidLink (<code>vidlink.pro</code>). Playback
                 availability depends on third-party stream authorization and regional access. ZyvoMovie
                 does not host media files or bypass DRM/access controls.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-                <GlassButton variant="primary" size="lg" onClick={authorizeProvider}>
-                  Authorize & Load VidLink Player
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 pt-1">
+                <GlassButton variant="primary" size="md" onClick={authorizeProvider} className="min-h-[44px]">
+                  Authorize &amp; Load VidLink Player
                 </GlassButton>
-                <GlassButton variant="darkGlass" size="lg" to={`/${shortTypeCode}/${id}`}>
-                  View Details & Trailer Instead
+                <GlassButton variant="darkGlass" size="md" to={`/${shortTypeCode}/${id}`} className="min-h-[44px]">
+                  View Details &amp; Trailer Instead
                 </GlassButton>
               </div>
             </div>

@@ -40,9 +40,10 @@ export function GlassMovieCard({
               src={media.posterPath}
               alt={`${media.title} poster`}
               loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
-              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+              className="w-full h-full object-cover transition-transform duration-500 ease-out md:group-hover:scale-[1.05]"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-zinc-900 to-zinc-800 text-white/60">
@@ -64,7 +65,7 @@ export function GlassMovieCard({
           </div>
         )}
 
-        {/* Watchlist quick toggle button */}
+        {/* Watchlist quick toggle button with full 44x44px touch target */}
         <button
           type="button"
           onClick={(e) => {
@@ -76,17 +77,21 @@ export function GlassMovieCard({
             saved ? `Remove ${media.title} from My List` : `Add ${media.title} to My List`
           }
           aria-pressed={saved}
-          className={`absolute top-2 right-2 z-10 min-w-[36px] min-h-[36px] w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#E50914] cursor-pointer ${
-            saved
-              ? 'bg-[#E50914] text-white shadow-[0_6px_16px_-3px_rgba(229,9,20,0.5)] border border-white/30'
-              : 'bg-black/45 hover:bg-black/70 backdrop-blur-md text-white border border-white/25'
-          }`}
+          className="absolute top-0.5 right-0.5 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[#E50914] rounded-full"
         >
-          {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+          <span
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 active:scale-95 ${
+              saved
+                ? 'bg-[#E50914] text-white shadow-[0_6px_16px_-3px_rgba(229,9,20,0.5)] border border-white/30'
+                : 'bg-black/50 hover:bg-black/75 backdrop-blur-md text-white border border-white/25'
+            }`}
+          >
+            {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+          </span>
         </button>
 
-        {/* Hover Reveal Actions */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-2.5 pt-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 flex items-center gap-1.5">
+        {/* Hover Reveal Actions (desktop pointer viewports) */}
+        <div className="hidden md:flex pointer-events-none absolute inset-x-0 bottom-0 p-2.5 pt-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 items-center gap-1.5">
           <Link
             to={watchPath}
             className="pointer-events-auto flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-full bg-white hover:bg-zinc-100 text-[#171717] text-xs font-semibold transition-colors whitespace-nowrap shadow-md"

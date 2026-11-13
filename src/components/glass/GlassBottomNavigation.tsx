@@ -18,6 +18,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { GLASS_SPRING, LIQUID_EASE } from '../../styles/glassTokens';
 import { useLibrary } from '../../context/LibraryContext';
+import { PWAInstallButton } from '../PWAComponents';
 
 const DESKTOP_NAV_ITEMS = [
   { to: '/', label: 'Home', icon: Home, exact: true },
@@ -130,10 +131,10 @@ export function GlassBottomNavigation() {
         aria-label="Mobile Bottom Navigation"
         className="md:hidden fixed left-1/2 -translate-x-1/2 z-[1000] w-[calc(100vw-24px)] max-w-[420px] pointer-events-none"
         style={{
-          bottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
+          bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        <div className="pointer-events-auto glass-bottom-dock glass-specular rounded-full p-1.5 grid grid-cols-4 gap-1 items-center">
+        <div className="pointer-events-auto glass-bottom-dock glass-specular rounded-full p-1 grid grid-cols-4 gap-1 items-center">
           {MOBILE_PRIMARY_ITEMS.map((item) => {
             const Icon = item.icon;
             const active =
@@ -259,7 +260,7 @@ export function GlassBottomNavigation() {
                 </button>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-1.5 max-h-[60vh] overflow-y-auto no-scrollbar">
+              <div className="mt-3 grid grid-cols-1 gap-1.5 max-h-[65dvh] overflow-y-auto no-scrollbar">
                 {MORE_SHEET_ITEMS.map((item) => {
                   const Icon = item.icon;
                   const active = location.pathname.startsWith(item.to);
@@ -307,6 +308,7 @@ export function GlassBottomNavigation() {
                     </Link>
                   );
                 })}
+                <PWAInstallButton variant="sheet" onAction={() => setMoreOpen(false)} />
               </div>
             </motion.div>
           </div>

@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useLibrary } from '../../context/LibraryContext';
 import { GLASS_SPRING } from '../../styles/glassTokens';
+import { PWAInstallButton } from '../PWAComponents';
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
@@ -31,13 +32,18 @@ export function GlassHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-3 sm:py-3.5 bg-[#12141a]/65 backdrop-blur-2xl border-b border-white/15">
-      <div className="w-full flex items-center justify-between gap-2.5 sm:gap-4">
+    <header
+      className="sticky top-0 z-40 w-full px-3.5 sm:px-6 lg:px-10 xl:px-12 py-1.5 md:py-3 bg-[rgba(18,22,29,0.68)] backdrop-blur-2xl saturate-[180%] border-b border-white/15"
+      style={{
+        paddingTop: 'max(0.375rem, env(safe-area-inset-top, 0px))',
+      }}
+    >
+      <div className="w-full min-w-0 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Brand + Compact VisionOS Search Pill */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
             to="/"
-            className="font-display text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap shrink-0 flex items-center gap-1.5"
+            className="font-display text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap shrink-0 flex items-center gap-1.5 min-h-[44px] md:min-h-0"
           >
             <span className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-[#E50914] text-white text-xs font-black shadow-[0_6px_16px_-3px_rgba(229,9,20,0.65)]">
               Z
@@ -112,11 +118,13 @@ export function GlassHeader() {
         </nav>
 
         {/* Zone 3: Quick Actions + Profile Glass Pill */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <PWAInstallButton variant="header" />
+
           <Link
             to="/search"
             aria-label="Search titles"
-            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full glass-control text-white/85 hover:text-white transition-colors"
+            className="lg:hidden w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full glass-control text-white/90 hover:text-white transition-colors"
           >
             <Search className="w-4 h-4" />
           </Link>
@@ -134,17 +142,17 @@ export function GlassHeader() {
             <Link
               to="/profile"
               aria-label="User Profile"
-              className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1 min-h-[38px] rounded-full glass-control hover:bg-white/20 text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 transition-all"
+              className="inline-flex items-center justify-center gap-2 p-1.5 sm:pl-1.5 sm:pr-3 sm:py-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-[38px] rounded-full glass-control hover:bg-white/20 text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 transition-all"
             >
               {user.photoURL ? (
                 <img
                   src={user.photoURL}
                   alt={user.displayName || 'Profile'}
                   referrerPolicy="no-referrer"
-                  className="w-6 h-6 rounded-full object-cover ring-1 ring-white/50"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-full object-cover ring-1 ring-white/50"
                 />
               ) : (
-                <span className="w-6 h-6 rounded-full bg-[#E50914] flex items-center justify-center text-white">
+                <span className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-[#E50914] flex items-center justify-center text-white">
                   <User className="w-3.5 h-3.5" />
                 </span>
               )}
@@ -156,7 +164,7 @@ export function GlassHeader() {
           ) : (
             <Link
               to="/login"
-              className="inline-flex items-center justify-center px-4 py-1.5 min-h-[38px] rounded-full bg-[#E50914] hover:bg-[#B20710] text-white text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 shadow-[0_8px_20px_-4px_rgba(229,9,20,0.55)] transition-colors"
+              className="inline-flex items-center justify-center px-4 py-1.5 min-h-[44px] md:min-h-[38px] rounded-full bg-[#E50914] hover:bg-[#B20710] text-white text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 shadow-[0_8px_20px_-4px_rgba(229,9,20,0.55)] transition-colors"
             >
               Sign In
             </Link>

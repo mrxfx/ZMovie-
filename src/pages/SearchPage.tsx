@@ -138,7 +138,7 @@ export function SearchPage() {
         />
 
         {/* Animated Media Type Filter Tabs */}
-        <div className="inline-flex flex-wrap items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
+        <div className="w-full grid grid-cols-4 sm:inline-flex sm:w-auto items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15">
           {(['all', 'movie', 'tv', 'anime'] as const).map((t) => {
             const active = mediaType === t;
             return (
@@ -149,7 +149,7 @@ export function SearchPage() {
                   setMediaType(t);
                   setPage(1);
                 }}
-                className={`relative px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                className={`relative px-2 sm:px-4 py-2 min-h-[44px] sm:min-h-[38px] rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer inline-flex items-center justify-center whitespace-nowrap ${
                   active
                     ? 'text-white font-semibold'
                     : 'text-white/70 hover:text-white'
@@ -164,7 +164,7 @@ export function SearchPage() {
                 )}
                 <span className="relative z-10">
                   {t === 'all'
-                    ? 'All Titles'
+                    ? 'All'
                     : t === 'movie'
                       ? 'Movies'
                       : t === 'tv'
@@ -179,7 +179,7 @@ export function SearchPage() {
 
       {/* Search History & Suggestions when input is empty */}
       {!debouncedQuery && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <GlassPanel variant="subtle" padding="md" className="rounded-3xl space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-base font-bold text-white flex items-center gap-2">
@@ -190,7 +190,7 @@ export function SearchPage() {
                 <button
                   type="button"
                   onClick={clearSearchHistory}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-white/65 hover:text-[#E50914] cursor-pointer"
+                  className="inline-flex items-center gap-1 min-h-[44px] px-2 text-xs font-medium text-white/65 hover:text-[#E50914] cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Clear History
@@ -209,7 +209,7 @@ export function SearchPage() {
                     key={entry.query}
                     type="button"
                     onClick={() => setQuery(entry.query)}
-                    className="px-3.5 py-2 rounded-full glass-control text-sm text-white/90 hover:bg-white/20 transition-colors cursor-pointer"
+                    className="px-3.5 py-2 min-h-[44px] sm:min-h-[38px] rounded-full glass-control text-sm text-white/90 hover:bg-white/20 transition-colors cursor-pointer"
                   >
                     {entry.query}
                   </button>
@@ -229,7 +229,7 @@ export function SearchPage() {
                   key={s}
                   type="button"
                   onClick={() => setQuery(s)}
-                  className="px-3.5 py-2 rounded-full glass-control text-sm text-white/90 hover:bg-white/20 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 min-h-[44px] sm:min-h-[38px] rounded-full glass-control text-sm text-white/90 hover:bg-white/20 transition-colors cursor-pointer"
                 >
                   {s}
                 </button>
@@ -279,7 +279,7 @@ export function SearchPage() {
               <p className="text-sm text-white/70 font-mono-tabular">
                 Showing {mergedItems.length} results for &ldquo;{debouncedQuery}&rdquo;
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-5">
                 {mergedItems.map((item) => (
                   <GlassMovieCard key={item.id} media={item} />
                 ))}

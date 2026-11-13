@@ -178,7 +178,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
           <div
             role="tablist"
             aria-label={`${pageTitle} categories`}
-            className="flex flex-wrap items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15"
+            className="flex overflow-x-auto no-scrollbar max-w-full sm:flex-wrap items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15"
           >
             {categories.map((cat) => {
               const active = category === cat.id;
@@ -192,7 +192,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
                     setCategory(cat.id);
                     setPage(1);
                   }}
-                  className={`relative px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`relative px-3.5 py-2 min-h-[44px] sm:min-h-[38px] rounded-full text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer inline-flex items-center justify-center ${
                     active
                       ? 'text-white font-semibold'
                       : 'text-white/70 hover:text-white'
@@ -214,8 +214,8 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
       </GlassPanel>
 
       {/* Glass Discovery Filter Bar */}
-      <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center gap-2.5">
-        <div className="inline-flex items-center gap-2 text-xs font-semibold text-white mr-1 px-1">
+      <GlassPanel variant="subtle" padding="sm" className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
+        <div className="col-span-2 sm:col-span-1 inline-flex items-center gap-2 text-xs font-semibold text-white px-1 pb-0.5 sm:pb-0 sm:mr-1">
           <SlidersHorizontal className="w-4 h-4 text-[#E50914]" />
           <span>Filters</span>
         </div>
@@ -230,7 +230,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setGenreId(e.target.value);
             setPage(1);
           }}
-          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="all">All Genres</option>
           {genres.map((g) => (
@@ -250,7 +250,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setYear(e.target.value);
             setPage(1);
           }}
-          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="all">All Years</option>
           {YEARS.map((y) => (
@@ -272,7 +272,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
                 setLanguage(e.target.value);
                 setPage(1);
               }}
-              className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
             >
               <option value="all">All Languages</option>
               <option value="en">English</option>
@@ -295,7 +295,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setMinRating(e.target.value);
             setPage(1);
           }}
-          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="">Any Rating</option>
           <option value="6">6.0+ Rating</option>
@@ -313,7 +313,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setSortBy(e.target.value);
             setPage(1);
           }}
-          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="popularity.desc">Most Popular</option>
           <option value="vote_average.desc">Highest Rated</option>
@@ -333,7 +333,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
         <button
           type="button"
           onClick={resetFilters}
-          className="ml-auto text-xs font-semibold text-white/80 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/15 transition-colors cursor-pointer"
+          className="w-full sm:w-auto sm:ml-auto min-h-[44px] sm:min-h-[38px] text-xs font-semibold text-white/85 hover:text-white px-3 py-1.5 rounded-full bg-white/[0.06] sm:bg-transparent hover:bg-white/15 transition-colors cursor-pointer"
         >
           Reset
         </button>
@@ -354,7 +354,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-5">
             {items.map((item) => (
               <GlassMovieCard key={item.id} media={item} />
             ))}

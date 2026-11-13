@@ -46,10 +46,11 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
     path: `/${getShortTypeCode(mediaType)}/${id}`,
   });
 
-  const loadDetails = async () => {
+  const loadDetails = async (isActive: () => boolean = () => true) => {
     const adminMatch = findAdminMediaById(mediaType, id);
     if (adminMatch) {
       const converted = toMediaDetails(adminMatch);
+      if (!isActive()) return;
       setDetails(converted);
       setNotice(undefined);
       setEpisodes(converted.episodes || []);
@@ -62,7 +63,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
       return;
     }
 
-    if (!/^\d+$/.test(id.trim()) && loadingAdminCatalog) {
+    if (loadingAdminCatalog) {
       setLoading(true);
       return;
     }
@@ -74,6 +75,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
     setShowTrailer(false);
     try {
       const res = await fetchMediaDetails(mediaType, id);
+      if (!isActive()) return;
       setDetails(res.details);
       setNotice(res.notice);
       setEpisodes(res.details.episodes || []);
@@ -82,14 +84,21 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
       }
       recordRecentlyViewed(res.details);
     } catch (err) {
+      if (!isActive()) return;
       setError(err instanceof Error ? err.message : 'Unable to load title details.');
     } finally {
-      setLoading(false);
+      if (isActive()) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void loadDetails();
+    let active = true;
+    void loadDetails(() => active);
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaType, id, findAdminMediaById, loadingAdminCatalog]);
 
@@ -144,8 +153,114 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
     <div className="w-full pt-2 space-y-10">
       {notice && <CatalogNoticeBanner notice={notice} />}
 
-      {/* Cinematic Backdrop + Floating Liquid Glass Metadata Panel */}
-      <section className="relative rounded-3xl overflow-hidden bg-zinc-950 p-4 sm:p-7 md:p-9 shadow-[0_24px_60px_-16px_rgba(17,24,39,0.3)]">
+      {/* Mobile Native Details Layout (< 768px) */}
+      <section className="md:hidden space-y-4">
+        <div className="relative -mx-3.5 -mt-2.5 h-56 sm:h-64 overflow-hidden bg-zinc-950">
+          {(details.backdropPath || details.posterPath) && !backdropErr ? (
+            <img
+              src={details.backdropPath || details.posterPath || ''}
+              alt={details.title}
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={() => setBackdropErr(true)}
+              className="w-full h-full object-cover object-center opacity-75"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-zinc-900 via-[#151922] to-[#3a070b]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#151922] via-black/40 to-black/20" />
+        </div>
+
+        <div className="-mt-20 relative z-10 flex items-end gap-3.5">
+          <div className="w-28 aspect-[2/3] rounded-2xl overflow-hidden glass-surface shrink-0 shadow-2xl border border-white/20 bg-zinc-900">
+            {details.posterPath && !posterErr ? (
+              <img
+                src={details.posterPath}
+                alt={`${details.title} poster`}
+                decoding="async"
+                referrerPolicy="no-referrer"
+                onError={() => setPosterErr(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center p-2 text-zinc-400">
+                <Film className="w-6 h-6 text-[#E50914] mb-1" />
+                <span className="text-[11px] text-center line-clamp-2">{details.title}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1.5 pb-1">
+            <span className="inline-block text-[11px] font-semibold uppercase tracking-wide text-[#E50914]">
+              {mediaType === 'tv' ? 'TV Series' : mediaType === 'anime' ? 'Anime' : 'Movie'}
+            </span>
+            <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight text-balance">
+              {details.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/75 font-mono-tabular">
+              <span className="inline-flex items-center gap-1 text-white font-semibold">
+                <Star className="w-3.5 h-3.5 fill-[#E50914] text-[#E50914]" />
+                {details.voteAverage > 0 ? details.voteAverage.toFixed(1) : 'NR'}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>{details.releaseYear || 'TBA'}</span>
+              {details.runtime ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>{details.runtime}m</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Mobile Primary Actions */}
+        <div className="flex items-center gap-2">
+          <GlassButton variant="white" size="md" to={watchPath} className="flex-1 min-h-[46px]">
+            <Play className="w-4 h-4 fill-current" />
+            {existingProgress && !existingProgress.completed ? 'Resume Watching' : 'Watch Now'}
+          </GlassButton>
+
+          <button
+            type="button"
+            onClick={() => void toggleWatchlist(details)}
+            aria-label={saved ? 'Remove from My List' : 'Add to My List'}
+            aria-pressed={saved}
+            className={`w-12 h-[46px] min-w-[44px] rounded-full flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${
+              saved
+                ? 'bg-[#E50914] border-white/30 text-white'
+                : 'glass-control text-white'
+            }`}
+          >
+            {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+          </button>
+
+          {trailer && (
+            <button
+              type="button"
+              onClick={() => setShowTrailer(true)}
+              aria-label="Watch Trailer"
+              className="w-12 h-[46px] min-w-[44px] rounded-full glass-control text-white flex items-center justify-center shrink-0 cursor-pointer"
+            >
+              <Youtube className="w-4 h-4 text-[#E50914]" />
+            </button>
+          )}
+        </div>
+
+        <GlassPanel variant="dark" padding="md" className="rounded-2xl space-y-3">
+          {details.tagline && <p className="text-xs italic text-white/75">{details.tagline}</p>}
+          {details.genres.length > 0 && (
+            <p className="text-xs text-white/70">{details.genres.join(' · ')}</p>
+          )}
+          <p className="text-sm text-white/85 leading-relaxed">{details.overview}</p>
+          {details.studios && details.studios.length > 0 && (
+            <p className="text-xs text-white/55">Production: {details.studios.join(', ')}</p>
+          )}
+        </GlassPanel>
+      </section>
+
+      {/* Desktop Cinematic Backdrop + Floating Liquid Glass Metadata Panel (>= 768px) */}
+      <section className="hidden md:block relative rounded-3xl overflow-hidden bg-zinc-950 p-7 md:p-9 shadow-[0_24px_60px_-16px_rgba(17,24,39,0.3)]">
         {(details.backdropPath || details.posterPath) && !backdropErr && (
           <img
             src={details.backdropPath || details.posterPath || ''}
@@ -368,18 +483,27 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
         </section>
       )}
 
-      {/* Transparent Glass Cast Cards */}
+      {/* Transparent Glass Cast Cards (Horizontal touch-scroll on mobile, grid on md+) */}
       {details.credits.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-3.5 sm:space-y-4">
           <div className="flex items-center gap-2.5">
             <span className="w-1 h-5 rounded-full bg-[#E50914]" aria-hidden="true" />
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-white">Cast &amp; Characters</h2>
+            <h2 className="font-display text-lg sm:text-2xl font-bold text-white">
+              Cast &amp; Characters
+            </h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory touch-pan-x -mx-3.5 px-3.5 md:mx-0 md:px-0 md:grid md:grid-cols-4 lg:grid-cols-6 md:gap-4 pb-1">
             {details.credits.slice(0, 12).map((c) => (
-              <GlassPanel key={`${c.id}-${c.name}`} variant="subtle" padding="sm">
-                <p className="font-display text-sm font-semibold text-white line-clamp-1">{c.name}</p>
-                <p className="text-xs text-white/65 line-clamp-1 mt-0.5">
+              <GlassPanel
+                key={`${c.id}-${c.name}`}
+                variant="subtle"
+                padding="sm"
+                className="min-w-[144px] max-w-[164px] md:min-w-0 md:max-w-none snap-start shrink-0 rounded-2xl"
+              >
+                <p className="font-display text-xs sm:text-sm font-semibold text-white line-clamp-1">
+                  {c.name}
+                </p>
+                <p className="text-[11px] sm:text-xs text-white/65 line-clamp-1 mt-0.5">
                   {c.character}
                 </p>
               </GlassPanel>

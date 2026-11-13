@@ -67,10 +67,13 @@ export function MediaCarousel({
 
       <div
         ref={scrollerRef}
-        className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-0.5"
+        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory touch-pan-x -mx-3.5 px-3.5 sm:mx-0 sm:px-0 pb-2 pt-0.5"
       >
         {items.map((item) => (
-          <div key={item.id} className="w-[155px] sm:w-[175px] md:w-[190px] xl:w-[205px] shrink-0">
+          <div
+            key={item.id}
+            className="w-[136px] min-[390px]:w-[146px] sm:w-[175px] md:w-[190px] xl:w-[205px] snap-start shrink-0"
+          >
             <GlassMovieCard media={item} />
           </div>
         ))}

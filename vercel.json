@@ -5,6 +5,9 @@
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/robots.txt", "destination": "/api" },
     { "source": "/sitemap.xml", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/|manifest\\.webmanifest|sw\\.js|registerSW\\.js|offline\\.html|workbox-).*)",
+      "destination": "/index.html"
+    }
   ]
 }

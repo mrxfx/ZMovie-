@@ -40,7 +40,7 @@ export function ContinueWatchingPage() {
           actionTo="/"
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-5">
           {watchProgress.map((item) => {
             const watchQuery =
               item.mediaType === 'tv' && item.season && item.episode
@@ -79,7 +79,7 @@ export function ContinueWatchingPage() {
                   </div>
                 </Link>
 
-                <div className="p-4 flex items-center justify-between gap-3">
+                <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Link
                       to={getStoredMediaDetailRoute(item)}
@@ -101,7 +101,7 @@ export function ContinueWatchingPage() {
                     type="button"
                     aria-label={`Remove ${item.title} from Continue Watching`}
                     onClick={() => void removeWatchProgress(item.mediaId)}
-                    className="p-2.5 rounded-full glass-control text-white/75 hover:text-[#E50914] hover:border-[#E50914]/40 transition-colors shrink-0 cursor-pointer"
+                    className="w-11 h-11 rounded-full glass-control text-white/75 hover:text-[#E50914] hover:border-[#E50914]/40 transition-colors shrink-0 inline-flex items-center justify-center cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -29,18 +29,33 @@
   }
 
   html,
-  body {
+  body,
+  #root {
     width: 100%;
-    max-width: none;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     padding: 0;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: var(--zyvo-bg);
+    background-color: #151922;
     color: var(--zyvo-text);
     overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  a,
+  button,
+  [role='button'],
+  input,
+  select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   select option {
@@ -110,9 +125,9 @@
 }
 
 .glass-dark {
-  background-color: rgba(14, 16, 22, 0.62);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
+  background-color: rgba(18, 22, 29, 0.65);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
@@ -161,13 +176,27 @@
 }
 
 .glass-bottom-dock {
-  background: rgba(18, 22, 29, 0.58);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(18, 22, 29, 0.65);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* Selective mobile glass optimization for smooth 60fps Android scrolling */
+@media (max-width: 767px) {
+  .glass-surface,
+  .glass-white {
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+  }
+  .glass-control,
+  .glass-badge {
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
+  }
 }
 
 /* Graceful fallback for browsers without backdrop-filter support */
@@ -183,6 +212,17 @@
   }
   .glass-bottom-dock {
     background: rgba(18, 22, 29, 0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
