@@ -1,6 +1,9 @@
 export type MediaType = 'movie' | 'tv' | 'anime';
 
-export type CatalogSource = 'tmdb' | 'jikan' | 'local-fallback';
+export type CatalogSource = 'tmdb' | 'jikan' | 'local-fallback' | 'admin-firestore';
+
+export type VidLinkPlayerType = 'default' | 'jw';
+export type VidLinkIconsStyle = 'default' | 'vid';
 
 export interface GenreItem {
   id: number;
@@ -66,6 +69,7 @@ export interface MediaSummary {
   status?: string;
   source: CatalogSource;
   isFallback?: boolean;
+  featured?: boolean;
 }
 
 export interface MediaDetails extends MediaSummary {
@@ -80,6 +84,28 @@ export interface MediaDetails extends MediaSummary {
   episodes?: EpisodeSummary[];
   similar: MediaSummary[];
   recommendations: MediaSummary[];
+}
+
+export interface AdminCatalogItem {
+  itemId: string;
+  mediaType: MediaType;
+  title: string;
+  overview: string;
+  posterPath: string;
+  backdropPath: string;
+  releaseYear: string;
+  voteAverage: number;
+  runtime?: number;
+  originalLanguage: string;
+  genres: string[];
+  tmdbId?: number;
+  malId?: number;
+  seasonCount?: number;
+  episodeCount?: number;
+  featured: boolean;
+  createdBy: string;
+  createdAtMs: number;
+  updatedAtMs: number;
 }
 
 export interface PagedCatalogResponse {

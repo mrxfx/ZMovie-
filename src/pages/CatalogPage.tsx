@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { motion } from 'motion/react';
 import {
   fetchAnimeCatalog,
   fetchGenres,
@@ -8,7 +9,9 @@ import {
   fetchTvList,
 } from '../services/catalogApi';
 import type { GenreItem, MediaSummary, MediaType, PagedCatalogResponse } from '../types/media';
-import { MediaCard } from '../components/MediaCard';
+import { GlassButton, GlassMovieCard, GlassPanel } from '../components/glass';
+import { useAdminCatalog } from '../context/AdminCatalogContext';
+import { filterCatalogMedia } from '../utils/mediaFilters';
 import {
   CatalogNoticeBanner,
   EmptyState,
@@ -16,6 +19,7 @@ import {
   GridSkeleton,
 } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
+import { GLASS_SPRING } from '../styles/glassTokens';
 
 const CATEGORY_OPTIONS: Record<MediaType, { id: string; label: string }[]> = {
   movie: [
@@ -120,8 +124,29 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaType, category, genreId, year, language, minRating, sortBy, page]);
 
+  const { adminMediaSummaries } = useAdminCatalog();
   const categories = CATEGORY_OPTIONS[mediaType];
-  const items: MediaSummary[] = response?.items || [];
+  const selectedGenreName =
+    genreId === 'all' ? 'all' : genres.find((g) => String(g.id) === genreId)?.name || genreId;
+  const matchingAdminItems =
+    page === 1
+      ? filterCatalogMedia(
+          adminMediaSummaries.filter((m) => m.mediaType === mediaType),
+          {
+            genre: selectedGenreName,
+            year,
+            language: mediaType === 'anime' ? 'all' : language,
+            minRating: minRating ? Number(minRating) : undefined,
+            sortBy:
+              sortBy === 'vote_average.desc'
+                ? 'rating'
+                : sortBy.includes('date') || sortBy === 'newest'
+                  ? 'newest'
+                  : 'popularity',
+          }
+        )
+      : [];
+  const items: MediaSummary[] = [...matchingAdminItems, ...(response?.items || [])];
 
   const resetFilters = () => {
     setCategory('popular');
@@ -135,50 +160,62 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#EEEEEE] dark:border-zinc-800 pb-6">
-        <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[#171717] dark:text-white">
-            {pageTitle}
-          </h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400 mt-1">
-            {mediaType === 'anime'
-              ? 'Curated anime catalog powered by MyAnimeList / Jikan metadata.'
-              : `Explore ${pageTitle.toLowerCase()} with genre, year, rating, and sorting controls.`}
-          </p>
-        </div>
+    <div className="w-full pt-2 space-y-6">
+      <GlassPanel variant="default" padding="md" className="rounded-3xl">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              {pageTitle}
+            </h1>
+            <p className="text-sm text-white/70 mt-1">
+              {mediaType === 'anime'
+                ? 'Curated anime catalog powered by MyAnimeList / Jikan metadata.'
+                : `Explore ${pageTitle.toLowerCase()} with genre, year, rating, and sorting controls.`}
+            </p>
+          </div>
 
-        {/* Category Filter Tabs */}
-        <div
-          role="tablist"
-          aria-label={`${pageTitle} categories`}
-          className="flex flex-wrap items-center gap-1.5 bg-[#F7F7F8] dark:bg-zinc-900 p-1 rounded-xl border border-[#EEEEEE] dark:border-zinc-800"
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              role="tab"
-              aria-selected={category === cat.id}
-              onClick={() => {
-                setCategory(cat.id);
-                setPage(1);
-              }}
-              className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
-                category === cat.id
-                  ? 'bg-[#E50914] text-white'
-                  : 'text-[#737373] dark:text-zinc-400 hover:text-[#171717] dark:hover:text-white'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+          {/* Animated Glass Category Tabs */}
+          <div
+            role="tablist"
+            aria-label={`${pageTitle} categories`}
+            className="flex flex-wrap items-center gap-1 p-1 rounded-full bg-white/10 border border-white/15"
+          >
+            {categories.map((cat) => {
+              const active = category === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setCategory(cat.id);
+                    setPage(1);
+                  }}
+                  className={`relative px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                    active
+                      ? 'text-white font-semibold'
+                      : 'text-white/70 hover:text-white'
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId={`catalog-active-tab-${mediaType}`}
+                      transition={GLASS_SPRING}
+                      className="absolute inset-0 rounded-full bg-[#E50914] shadow-[0_6px_16px_-4px_rgba(229,9,20,0.45)] -z-10"
+                    />
+                  )}
+                  <span className="relative z-10">{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </GlassPanel>
 
-      {/* Discovery Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 bg-[#F7F7F8] dark:bg-zinc-900/70 border border-[#EEEEEE] dark:border-zinc-800 rounded-xl p-3.5">
-        <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#171717] dark:text-zinc-200 mr-1">
+      {/* Glass Discovery Filter Bar */}
+      <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center gap-2.5">
+        <div className="inline-flex items-center gap-2 text-xs font-semibold text-white mr-1 px-1">
           <SlidersHorizontal className="w-4 h-4 text-[#E50914]" />
           <span>Filters</span>
         </div>
@@ -193,7 +230,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setGenreId(e.target.value);
             setPage(1);
           }}
-          className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-700 text-xs sm:text-sm text-[#171717] dark:text-zinc-100"
+          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="all">All Genres</option>
           {genres.map((g) => (
@@ -213,7 +250,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setYear(e.target.value);
             setPage(1);
           }}
-          className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-700 text-xs sm:text-sm text-[#171717] dark:text-zinc-100"
+          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="all">All Years</option>
           {YEARS.map((y) => (
@@ -235,7 +272,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
                 setLanguage(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-700 text-xs sm:text-sm text-[#171717] dark:text-zinc-100"
+              className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
             >
               <option value="all">All Languages</option>
               <option value="en">English</option>
@@ -258,7 +295,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setMinRating(e.target.value);
             setPage(1);
           }}
-          className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-700 text-xs sm:text-sm text-[#171717] dark:text-zinc-100"
+          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="">Any Rating</option>
           <option value="6">6.0+ Rating</option>
@@ -276,7 +313,7 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
             setSortBy(e.target.value);
             setPage(1);
           }}
-          className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-700 text-xs sm:text-sm text-[#171717] dark:text-zinc-100"
+          className="px-3.5 py-2 rounded-full glass-control text-xs sm:text-sm text-white focus:outline-none focus:border-white/45"
         >
           <option value="popularity.desc">Most Popular</option>
           <option value="vote_average.desc">Highest Rated</option>
@@ -296,16 +333,16 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
         <button
           type="button"
           onClick={resetFilters}
-          className="ml-auto text-xs font-semibold text-[#E50914] hover:text-[#B20710] px-2 py-1.5"
+          className="ml-auto text-xs font-semibold text-white/80 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/15 transition-colors cursor-pointer"
         >
           Reset
         </button>
-      </div>
+      </GlassPanel>
 
       {response?.notice && <CatalogNoticeBanner notice={response.notice} />}
 
       {loading ? (
-        <GridSkeleton count={10} />
+        <GridSkeleton count={14} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => void loadCatalog()} />
       ) : items.length === 0 ? (
@@ -317,36 +354,36 @@ export function CatalogPage({ mediaType }: { mediaType: MediaType }) {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
             {items.map((item) => (
-              <MediaCard key={item.id} media={item} />
+              <GlassMovieCard key={item.id} media={item} />
             ))}
           </div>
 
-          {/* Pagination */}
+          {/* Glass Pagination */}
           {response && response.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-6">
-              <button
-                type="button"
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <GlassButton
+                variant="glass"
+                size="md"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm font-medium disabled:opacity-40 hover:border-[#E50914] transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous
-              </button>
-              <span className="text-sm font-mono-tabular text-[#737373] dark:text-zinc-400">
+              </GlassButton>
+              <GlassPanel variant="subtle" padding="none" className="px-4 py-2 rounded-full text-xs sm:text-sm font-mono-tabular text-white/80">
                 Page {response.page} of {response.totalPages}
-              </span>
-              <button
-                type="button"
+              </GlassPanel>
+              <GlassButton
+                variant="glass"
+                size="md"
                 disabled={page >= response.totalPages}
                 onClick={() => setPage((p) => Math.min(response.totalPages, p + 1))}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm font-medium disabled:opacity-40 hover:border-[#E50914] transition-colors"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </GlassButton>
             </div>
           )}
         </>

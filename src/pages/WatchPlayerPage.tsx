@@ -2,24 +2,35 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Maximize2,
+  RotateCcw,
   ShieldCheck,
-  Subtitles,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { fetchMediaDetails, fetchTvSeasonEpisodes } from '../services/catalogApi';
-import type { EpisodeSummary, MediaDetails, MediaType } from '../types/media';
+import type {
+  EpisodeSummary,
+  MediaDetails,
+  MediaType,
+  VidLinkIconsStyle,
+  VidLinkPlayerType,
+} from '../types/media';
 import { useLibrary } from '../context/LibraryContext';
-import { buildVidLinkUrl, validateSubtitleUrl } from '../utils/mediaFilters';
-import { parsePlayerPostMessage, shouldPersistProgressUpdate } from '../utils/playerEvents';
+import { useAdminCatalog } from '../context/AdminCatalogContext';
+import { buildVidLinkUrl, validateHttpsUrl, validateSubtitleUrl } from '../utils/mediaFilters';
+import {
+  parsePlayerPostMessage,
+  parseVidLinkMediaData,
+  shouldPersistProgressUpdate,
+} from '../utils/playerEvents';
 import { createCanonicalMediaId, formatPlaybackTime } from '../utils/watchProgress';
+import { GlassButton, GlassPanel, GlassPlayerControls } from '../components/glass';
 import { ErrorState, HeroSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
 const PROVIDER_CONSENT_KEY = 'zyvomovie_vidlink_authorized_v1';
+const VIDLINK_PROGRESS_STORAGE_KEY = 'vidLinkProgress';
 
 export function WatchPlayerPage() {
   const { type, id = '' } = useParams<{ type: MediaType; id: string }>();
@@ -30,6 +41,7 @@ export function WatchPlayerPage() {
   const initialSeason = Math.max(1, Number(searchParams.get('s') || 1));
   const initialEpisode = Math.max(1, Number(searchParams.get('e') || 1));
   const { preferences, saveWatchProgress, recordHistoryEntry, watchProgress } = useLibrary();
+  const { findAdminMediaById, toMediaDetails, loadingAdminCatalog } = useAdminCatalog();
 
   const initialAudio =
     searchParams.get('audio') === 'dub'
@@ -41,8 +53,18 @@ export function WatchPlayerPage() {
   const [season, setSeason] = useState(initialSeason);
   const [episode, setEpisode] = useState(initialEpisode);
   const [subOrDub, setSubOrDub] = useState<'sub' | 'dub'>(initialAudio);
+  const [animeFallback, setAnimeFallback] = useState(true);
+  const [playerType, setPlayerType] = useState<VidLinkPlayerType>('default');
+  const [iconsStyle, setIconsStyle] = useState<VidLinkIconsStyle>('default');
+  const [resumeFromCheckpoint, setResumeFromCheckpoint] = useState(true);
+
+  const [showSubtitlesPanel, setShowSubtitlesPanel] = useState(false);
   const [subtitleInput, setSubtitleInput] = useState('');
+  const [subtitleLabelInput, setSubtitleLabelInput] = useState('English');
   const [appliedSubtitle, setAppliedSubtitle] = useState('');
+  const [appliedSubtitleLabel, setAppliedSubtitleLabel] = useState('English');
+  const [fallbackUrlInput, setFallbackUrlInput] = useState('');
+  const [appliedFallbackUrl, setAppliedFallbackUrl] = useState('');
   const [subtitleError, setSubtitleError] = useState<string | null>(null);
 
   const [details, setDetails] = useState<MediaDetails | null>(null);
@@ -72,11 +94,26 @@ export function WatchPlayerPage() {
 
   useSeoMetadata({
     title: details ? `Watch ${details.title} – ZyvoMovie` : 'Watch Player – ZyvoMovie',
-    description: 'ZyvoMovie responsive player with synchronized Continue Watching progress.',
+    description: 'ZyvoMovie responsive player with VidLink customization and Continue Watching sync.',
     path: `/watch/${mediaType}/${id}`,
   });
 
   useEffect(() => {
+    const adminMatch = findAdminMediaById(mediaType, id);
+    if (adminMatch) {
+      const converted = toMediaDetails(adminMatch);
+      setDetails(converted);
+      setEpisodes(converted.episodes || []);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (id.startsWith('adm_') && loadingAdminCatalog) {
+      setLoading(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     void fetchMediaDetails(mediaType, id)
@@ -88,24 +125,49 @@ export function WatchPlayerPage() {
         setError(err instanceof Error ? err.message : 'Unable to load media metadata.');
       })
       .finally(() => setLoading(false));
-  }, [mediaType, id]);
+  }, [mediaType, id, findAdminMediaById, toMediaDetails, loadingAdminCatalog]);
 
   useEffect(() => {
-    if (mediaType !== 'tv' || !details?.tmdbId) return;
+    if (mediaType !== 'tv' || !details?.tmdbId || details.source === 'admin-firestore') return;
     void fetchTvSeasonEpisodes(String(details.tmdbId), season)
       .then((res) => setEpisodes(res.episodes || []))
       .catch(() => {});
-  }, [mediaType, details?.tmdbId, season]);
+  }, [mediaType, details?.tmdbId, details?.source, season]);
+
+  const numericRouteId =
+    /^\d+$/.test(id.trim()) && Number(id.trim()) > 0 ? Number(id.trim()) : undefined;
+  const resolvedTmdbId =
+    details?.tmdbId ?? (mediaType !== 'anime' ? numericRouteId : undefined);
+  const resolvedMalId =
+    details?.malId ?? (mediaType === 'anime' ? numericRouteId : undefined);
+
+  const canonicalId = details ? createCanonicalMediaId(mediaType, details.id) : '';
+  const existingCheckpoint = canonicalId
+    ? watchProgress.find((p) => p.mediaId === canonicalId)
+    : undefined;
+  const startAtSeconds =
+    resumeFromCheckpoint && existingCheckpoint && existingCheckpoint.currentTime >= 5
+      ? Math.floor(existingCheckpoint.currentTime)
+      : undefined;
 
   const vidLinkResult = buildVidLinkUrl({
     mediaType,
-    tmdbId: details?.tmdbId,
-    malId: details?.malId,
+    tmdbId: resolvedTmdbId,
+    malId: resolvedMalId,
     season,
     episode,
     subOrDub,
+    animeFallback,
+    playerType,
+    icons: iconsStyle,
+    title: true,
+    poster: true,
     autoplay: false,
+    nextbutton: preferences.autoplayNext,
+    startAt: startAtSeconds,
     subtitleUrl: appliedSubtitle || undefined,
+    subtitleLabel: appliedSubtitleLabel || undefined,
+    fallbackUrl: appliedFallbackUrl || undefined,
   });
 
   // Record Watch History when stream is authorized & mounted with a valid provider URL
@@ -120,14 +182,25 @@ export function WatchPlayerPage() {
       mediaType,
       title: details.title,
       posterPath: details.posterPath || '',
-      tmdbId: details.tmdbId,
-      malId: details.malId,
+      tmdbId: resolvedTmdbId,
+      malId: resolvedMalId,
       season: mediaType === 'tv' ? season : undefined,
       episode: mediaType === 'tv' || mediaType === 'anime' ? episode : undefined,
     });
-  }, [details, providerAuthorized, vidLinkResult.url, mediaType, season, episode, subOrDub, recordHistoryEntry]);
+  }, [
+    details,
+    providerAuthorized,
+    vidLinkResult.url,
+    mediaType,
+    season,
+    episode,
+    subOrDub,
+    resolvedTmdbId,
+    resolvedMalId,
+    recordHistoryEntry,
+  ]);
 
-  // Listen strictly to validated postMessage events from the player iframe
+  // Listen strictly to origin-validated VidLink PLAYER_EVENT and MEDIA_DATA postMessages
   useEffect(() => {
     if (!details || !providerAuthorized || !vidLinkResult.url) return;
 
@@ -135,6 +208,58 @@ export function WatchPlayerPage() {
       const sourceMatches = Boolean(
         iframeRef.current?.contentWindow && event.source === iframeRef.current.contentWindow
       );
+
+      const mediaDataResult = parseVidLinkMediaData(event.data, event.origin, sourceMatches);
+      if (mediaDataResult) {
+        try {
+          const existingRaw = localStorage.getItem(VIDLINK_PROGRESS_STORAGE_KEY);
+          const existingMap =
+            existingRaw && typeof JSON.parse(existingRaw) === 'object'
+              ? (JSON.parse(existingRaw) as Record<string, unknown>)
+              : {};
+          localStorage.setItem(
+            VIDLINK_PROGRESS_STORAGE_KEY,
+            JSON.stringify({ ...existingMap, ...mediaDataResult.rawMap })
+          );
+        } catch {
+          // ignore localStorage write issues
+        }
+
+        const matched = mediaDataResult.entries.find(
+          (entry) =>
+            (resolvedTmdbId && entry.id === resolvedTmdbId) ||
+            (resolvedMalId && entry.id === resolvedMalId)
+        );
+        if (matched && matched.duration > 0) {
+          setLastPlaybackStats({
+            event: 'media_data',
+            currentTime: matched.watched,
+            duration: matched.duration,
+            progressPercent: matched.progressPercent,
+          });
+          void saveWatchProgress({
+            mediaId: createCanonicalMediaId(mediaType, details.id),
+            mediaType,
+            title: details.title,
+            posterPath: details.posterPath || '',
+            backdropPath: details.backdropPath || details.posterPath || '',
+            tmdbId: resolvedTmdbId,
+            malId: resolvedMalId,
+            season: mediaType === 'tv' ? matched.season ?? season : undefined,
+            episode:
+              mediaType === 'tv' || mediaType === 'anime'
+                ? matched.episode ?? episode
+                : undefined,
+            subOrDub: mediaType === 'anime' ? subOrDub : undefined,
+            currentTime: matched.watched,
+            duration: matched.duration,
+            progressPercent: matched.progressPercent,
+            completed: matched.completed,
+          });
+        }
+        return;
+      }
+
       const parsed = parsePlayerPostMessage(event.data, event.origin, sourceMatches);
       if (!parsed) return;
 
@@ -162,8 +287,8 @@ export function WatchPlayerPage() {
           title: details.title,
           posterPath: details.posterPath || '',
           backdropPath: details.backdropPath || details.posterPath || '',
-          tmdbId: details.tmdbId,
-          malId: details.malId,
+          tmdbId: resolvedTmdbId,
+          malId: resolvedMalId,
           season: mediaType === 'tv' ? parsed.season ?? season : undefined,
           episode:
             mediaType === 'tv' || mediaType === 'anime'
@@ -180,7 +305,18 @@ export function WatchPlayerPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [details, providerAuthorized, vidLinkResult.url, mediaType, season, episode, subOrDub, saveWatchProgress]);
+  }, [
+    details,
+    providerAuthorized,
+    vidLinkResult.url,
+    mediaType,
+    season,
+    episode,
+    subOrDub,
+    resolvedTmdbId,
+    resolvedMalId,
+    saveWatchProgress,
+  ]);
 
   const authorizeProvider = () => {
     setProviderAuthorized(true);
@@ -218,26 +354,39 @@ export function WatchPlayerPage() {
     }
   };
 
-  const handleApplySubtitle = (e: React.FormEvent) => {
+  const handleApplySubtitleAndFallback = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subtitleInput.trim()) {
-      setAppliedSubtitle('');
-      setSubtitleError(null);
-      return;
-    }
-    const valid = validateSubtitleUrl(subtitleInput);
-    if (!valid) {
-      setSubtitleError('Please enter a valid HTTPS subtitle file URL (.vtt or .srt).');
-      return;
-    }
     setSubtitleError(null);
-    setAppliedSubtitle(valid);
+
+    if (subtitleInput.trim()) {
+      const validSub = validateSubtitleUrl(subtitleInput);
+      if (!validSub) {
+        setSubtitleError('Subtitle track URL must be a valid HTTPS .vtt or .srt link.');
+        return;
+      }
+      setAppliedSubtitle(validSub);
+      setAppliedSubtitleLabel(subtitleLabelInput.trim() || 'English');
+    } else {
+      setAppliedSubtitle('');
+    }
+
+    if (fallbackUrlInput.trim()) {
+      const validFallback = validateHttpsUrl(fallbackUrlInput);
+      if (!validFallback) {
+        setSubtitleError('Fallback redirect URL must be a valid HTTPS link.');
+        return;
+      }
+      setAppliedFallbackUrl(validFallback);
+    } else {
+      setAppliedFallbackUrl('');
+    }
+
     setIframeLoaded(false);
   };
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+      <div className="w-full pt-2">
         <HeroSkeleton />
       </div>
     );
@@ -245,33 +394,28 @@ export function WatchPlayerPage() {
 
   if (error || !details) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
+      <div className="w-full pt-4">
         <ErrorState message={error || 'Title not found.'} onRetry={() => navigate(-1)} />
       </div>
     );
   }
 
-  const canonicalId = createCanonicalMediaId(mediaType, details.id);
-  const existingCheckpoint = watchProgress.find((p) => p.mediaId === canonicalId);
   const maxEpisodes = episodes.length > 0 ? episodes.length : details.episodeCount || 24;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
-      {/* Top Back Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="w-full pt-2 space-y-6">
+      {/* Floating Glass Top Bar */}
+      <GlassPanel variant="default" padding="sm" className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link
-            to={`/${mediaType}/${id}`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-800 bg-[#F7F7F8] dark:bg-zinc-900 text-sm font-medium hover:border-[#E50914] transition-colors"
-          >
+          <GlassButton variant="glass" size="sm" to={`/${mediaType}/${id}`}>
             <ArrowLeft className="w-4 h-4" />
             Back to Details
-          </Link>
+          </GlassButton>
           <div>
-            <h1 className="font-display text-xl sm:text-2xl font-bold line-clamp-1">
+            <h1 className="font-display text-lg sm:text-xl font-bold text-white line-clamp-1">
               {details.title}
             </h1>
-            <p className="text-xs text-[#737373] dark:text-zinc-400 font-mono-tabular">
+            <p className="text-xs text-white/65 font-mono-tabular">
               {mediaType === 'tv'
                 ? `Season ${season} · Episode ${episode}`
                 : mediaType === 'anime'
@@ -281,92 +425,94 @@ export function WatchPlayerPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleFullscreen}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm font-medium hover:border-[#E50914] transition-colors"
-        >
+        <GlassButton variant="glass" size="sm" onClick={handleFullscreen}>
           <Maximize2 className="w-4 h-4" />
           Fullscreen
-        </button>
-      </div>
+        </GlassButton>
+      </GlassPanel>
 
       {/* Existing Resume Banner */}
       {existingCheckpoint && existingCheckpoint.progressPercent > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 text-sm">
+        <GlassPanel variant="subtle" padding="sm" className="flex flex-wrap items-center justify-between gap-3 text-sm text-white/85">
           <span>
             Last synced checkpoint:{' '}
-            <strong className="font-mono-tabular">
+            <strong className="font-mono-tabular text-white">
               {formatPlaybackTime(existingCheckpoint.currentTime)}
             </strong>{' '}
             ({existingCheckpoint.progressPercent.toFixed(0)}%)
           </span>
-          <Link
-            to="/continue-watching"
-            className="text-xs font-semibold text-[#E50914] hover:underline"
-          >
-            Manage Continue Watching
-          </Link>
-        </div>
+          <div className="flex items-center gap-3">
+            {existingCheckpoint.currentTime >= 5 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setResumeFromCheckpoint((prev) => !prev);
+                  setIframeLoaded(false);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/85 hover:text-white cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                {resumeFromCheckpoint
+                  ? 'Restart from 0:00'
+                  : `Resume at ${formatPlaybackTime(existingCheckpoint.currentTime)}`}
+              </button>
+            )}
+            <Link
+              to="/continue-watching"
+              className="text-xs font-semibold text-[#E50914] hover:underline"
+            >
+              Manage Continue Watching
+            </Link>
+          </div>
+        </GlassPanel>
       )}
 
-      {/* Player Viewport */}
+      {/* Player Theater Frame */}
       <div
         ref={playerContainerRef}
-        className="relative aspect-video w-full rounded-2xl overflow-hidden bg-zinc-950 border border-[#EEEEEE] dark:border-zinc-800"
+        className="relative aspect-video w-full rounded-3xl overflow-hidden bg-zinc-950 glass-surface shadow-[0_28px_64px_-16px_rgba(17,24,39,0.4)]"
       >
         {!vidLinkResult.url ? (
-          /* Honest fallback when title has no valid TMDB/MAL ID (e.g. local development sample record) */
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950">
-            <AlertTriangle className="w-10 h-10 text-[#E50914] mb-3" />
-            <h2 className="font-display text-xl font-bold mb-2">
-              External Stream Unavailable for Local Sample Record
-            </h2>
-            <p className="text-sm text-zinc-300 max-w-lg mb-6 leading-relaxed">
-              {vidLinkResult.reason} Configure <code className="text-white">TMDB_READ_ACCESS_TOKEN</code> on
-              the server or browse live Jikan/MAL anime records to load authorized provider IDs.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to={`/${mediaType}/${id}`}
-                className="px-5 py-2.5 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors"
-              >
-                Return to Details
-              </Link>
-              <Link
-                to="/settings"
-                className="px-5 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition-colors"
-              >
-                Check Provider Status
-              </Link>
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950/95">
+            <div className="glass-dark rounded-3xl p-6 sm:p-8 max-w-lg space-y-4">
+              <AlertTriangle className="w-10 h-10 text-[#E50914] mx-auto" />
+              <h2 className="font-display text-xl font-bold">
+                External Stream Unavailable Without Provider ID
+              </h2>
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                {vidLinkResult.reason} Configure <code className="text-white">TMDB_READ_ACCESS_TOKEN</code>{' '}
+                on the server, assign a TMDB/MAL ID in the Admin Panel, or browse live anime records.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <GlassButton variant="primary" size="md" to={`/${mediaType}/${id}`}>
+                  Return to Details
+                </GlassButton>
+                <GlassButton variant="darkGlass" size="md" to="/settings">
+                  Check Provider Status
+                </GlassButton>
+              </div>
             </div>
           </div>
         ) : !providerAuthorized ? (
-          /* Provider Terms & Content Authorization Gate */
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950">
-            <ShieldCheck className="w-10 h-10 text-[#E50914] mb-3" />
-            <h2 className="font-display text-xl font-bold mb-2">
-              Third-Party Streaming Provider Notice
-            </h2>
-            <p className="text-sm text-zinc-300 max-w-xl mb-6 leading-relaxed">
-              ZyvoMovie embeds external playback via VidLink (<code>vidlink.pro</code>). Playback
-              availability depends on third-party stream authorization and regional access. ZyvoMovie
-              does not host media files or bypass DRM/access controls.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={authorizeProvider}
-                className="px-6 py-3 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors"
-              >
-                Authorize & Load VidLink Player
-              </button>
-              <Link
-                to={`/${mediaType}/${id}`}
-                className="px-5 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition-colors"
-              >
-                View Details & Trailer Instead
-              </Link>
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-950/95">
+            <div className="glass-dark rounded-3xl p-6 sm:p-8 max-w-xl space-y-4">
+              <ShieldCheck className="w-10 h-10 text-[#E50914] mx-auto" />
+              <h2 className="font-display text-xl font-bold">
+                Third-Party Streaming Provider Notice
+              </h2>
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                ZyvoMovie embeds external playback via VidLink (<code>vidlink.pro</code>). Playback
+                availability depends on third-party stream authorization and regional access. ZyvoMovie
+                does not host media files or bypass DRM/access controls.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <GlassButton variant="primary" size="lg" onClick={authorizeProvider}>
+                  Authorize & Load VidLink Player
+                </GlassButton>
+                <GlassButton variant="darkGlass" size="lg" to={`/${mediaType}/${id}`}>
+                  View Details & Trailer Instead
+                </GlassButton>
+              </div>
             </div>
           </div>
         ) : (
@@ -391,152 +537,81 @@ export function WatchPlayerPage() {
         )}
       </div>
 
-      {/* Player Controls Bar: Episode Prev/Next, Season/Episode Selector, Sub/Dub, Subtitle Config */}
+      {/* Liquid Glass Player Controls + Stream Adapter Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-base font-bold">Playback Controls</h2>
-            {lastPlaybackStats && (
-              <span className="text-xs font-mono-tabular text-[#737373] dark:text-zinc-400">
-                Last event: {lastPlaybackStats.event} · {lastPlaybackStats.progressPercent.toFixed(1)}%
-              </span>
-            )}
-          </div>
-
-          {(mediaType === 'tv' || mediaType === 'anime') && (
-            <div className="flex flex-wrap items-center gap-3">
-              {mediaType === 'tv' && details.seasons && details.seasons.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <label htmlFor="player-season" className="text-xs font-medium text-[#737373]">
-                    Season
-                  </label>
-                  <select
-                    id="player-season"
-                    value={season}
-                    onChange={(e) => updateEpisodeParams(Number(e.target.value), 1)}
-                    className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm"
-                  >
-                    {details.seasons.map((s) => (
-                      <option key={s.id} value={s.seasonNumber}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <label htmlFor="player-episode" className="text-xs font-medium text-[#737373]">
-                  Episode
-                </label>
-                <select
-                  id="player-episode"
-                  value={episode}
-                  onChange={(e) => updateEpisodeParams(season, Number(e.target.value))}
-                  className="px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm"
-                >
-                  {Array.from({ length: maxEpisodes }, (_, i) => i + 1).map((epNum) => (
-                    <option key={epNum} value={epNum}>
-                      Episode {epNum}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {mediaType === 'anime' && (
-                <div className="flex items-center gap-1 bg-white dark:bg-zinc-800 p-1 rounded-lg border border-[#EEEEEE] dark:border-zinc-700">
-                  {(['sub', 'dub'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => updateEpisodeParams(season, episode, mode)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-semibold uppercase transition-colors ${
-                        subOrDub === mode
-                          ? 'bg-[#E50914] text-white'
-                          : 'text-[#737373] dark:text-zinc-400 hover:text-[#171717] dark:hover:text-white'
-                      }`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  type="button"
-                  disabled={episode <= 1}
-                  onClick={() => updateEpisodeParams(season, Math.max(1, episode - 1))}
-                  className="inline-flex items-center gap-1 px-3.5 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-semibold disabled:opacity-40 hover:border-[#E50914]"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Prev Ep
-                </button>
-                <button
-                  type="button"
-                  disabled={episode >= maxEpisodes}
-                  onClick={() => updateEpisodeParams(season, episode + 1)}
-                  className="inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-xs font-semibold disabled:opacity-40"
-                >
-                  Next Ep
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* External Subtitle Configuration */}
-          <form onSubmit={handleApplySubtitle} className="space-y-2 pt-2 border-t border-[#EEEEEE] dark:border-zinc-800">
-            <label
-              htmlFor="external-subtitle-url"
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#171717] dark:text-zinc-200"
-            >
-              <Subtitles className="w-4 h-4 text-[#E50914]" />
-              External Subtitle Track (HTTPS .vtt / .srt)
-            </label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                id="external-subtitle-url"
-                type="url"
-                value={subtitleInput}
-                onChange={(e) => setSubtitleInput(e.target.value)}
-                placeholder="https://example.com/subtitles.vtt"
-                className="flex-1 px-3.5 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-lg bg-[#171717] dark:bg-white text-white dark:text-[#171717] text-xs font-semibold hover:opacity-90 whitespace-nowrap"
-              >
-                Apply Subtitles
-              </button>
-            </div>
-            {subtitleError && <p className="text-xs text-[#E50914]">{subtitleError}</p>}
-          </form>
+        <div className="lg:col-span-2">
+          <GlassPlayerControls
+            mediaType={mediaType}
+            playerType={playerType}
+            onPlayerTypeChange={(mode) => {
+              setPlayerType(mode);
+              setIframeLoaded(false);
+            }}
+            iconStyle={iconsStyle}
+            onIconStyleChange={(style) => {
+              setIconsStyle(style);
+              setIframeLoaded(false);
+            }}
+            animeAudio={subOrDub}
+            onAnimeAudioChange={(audio) => updateEpisodeParams(season, episode, audio)}
+            animeFallback={animeFallback}
+            onAnimeFallbackChange={(next) => {
+              setAnimeFallback(next);
+              setIframeLoaded(false);
+            }}
+            showSubtitlesPanel={showSubtitlesPanel}
+            onToggleSubtitlesPanel={() => setShowSubtitlesPanel((v) => !v)}
+            subtitleInput={subtitleInput}
+            onSubtitleInputChange={setSubtitleInput}
+            subtitleLabelInput={subtitleLabelInput}
+            onSubtitleLabelInputChange={setSubtitleLabelInput}
+            fallbackUrlInput={fallbackUrlInput}
+            onFallbackUrlInputChange={setFallbackUrlInput}
+            onApplySubtitleAndFallback={handleApplySubtitleAndFallback}
+            subtitleError={subtitleError}
+            season={season}
+            episode={episode}
+            seasons={details.seasons}
+            maxEpisodes={maxEpisodes}
+            onSeasonChange={(sNum) => updateEpisodeParams(sNum, 1)}
+            onEpisodeChange={(epNum) => updateEpisodeParams(season, epNum)}
+            onPrevEpisode={() => updateEpisodeParams(season, Math.max(1, episode - 1))}
+            onNextEpisode={() => updateEpisodeParams(season, episode + 1)}
+            lastPlaybackStats={lastPlaybackStats}
+          />
         </div>
 
-        {/* Provider Adapter Status & Fallback Info */}
-        <div className="p-5 rounded-2xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 space-y-3">
-          <h2 className="font-display text-base font-bold">Stream Adapter</h2>
-          <dl className="text-xs space-y-2 text-[#737373] dark:text-zinc-400">
+        {/* Glass Stream Adapter Card */}
+        <GlassPanel variant="default" padding="md" className="space-y-3 h-fit">
+          <h2 className="font-display text-base font-bold text-white">Stream Adapter</h2>
+          <dl className="text-xs space-y-2.5 text-white/65">
             <div className="flex justify-between gap-2">
               <dt>Provider</dt>
-              <dd className="font-mono-tabular text-[#171717] dark:text-zinc-200">VidLink Pro</dd>
+              <dd className="font-mono-tabular text-white">
+                VidLink Pro ({playerType === 'jw' ? 'JW' : 'Default'})
+              </dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>Identifier</dt>
-              <dd className="font-mono-tabular text-[#171717] dark:text-zinc-200">
+              <dd className="font-mono-tabular text-white">
                 {mediaType === 'anime'
-                  ? details.malId
-                    ? `MAL #${details.malId}`
+                  ? resolvedMalId
+                    ? `MAL #${resolvedMalId}`
                     : 'Not mapped'
-                  : details.tmdbId
-                    ? `TMDB #${details.tmdbId}`
+                  : resolvedTmdbId
+                    ? `TMDB #${resolvedTmdbId}`
                     : 'Not mapped'}
               </dd>
             </div>
             <div className="flex justify-between gap-2">
+              <dt>Resume Start</dt>
+              <dd className="font-mono-tabular text-white">
+                {startAtSeconds ? formatPlaybackTime(startAtSeconds) : '0:00'}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
               <dt>Progress Sync</dt>
-              <dd className="text-[#171717] dark:text-zinc-200">Origin-Validated postMessage</dd>
+              <dd className="text-white">PLAYER_EVENT + MEDIA_DATA</dd>
             </div>
           </dl>
           {vidLinkResult.url && (
@@ -550,7 +625,7 @@ export function WatchPlayerPage() {
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
-        </div>
+        </GlassPanel>
       </div>
     </div>
   );

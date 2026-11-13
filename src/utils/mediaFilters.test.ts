@@ -8,20 +8,39 @@ import {
 } from './mediaFilters';
 import { FALLBACK_MOVIES } from '../data/fallbackCatalog';
 
-test('buildVidLinkUrl builds movie, tv, and anime URLs with required theme params', () => {
-  const movie = buildVidLinkUrl({ mediaType: 'movie', tmdbId: 550 });
+test('buildVidLinkUrl builds movie, tv, and anime URLs with required VidLink params', () => {
+  const movie = buildVidLinkUrl({
+    mediaType: 'movie',
+    tmdbId: 550,
+    playerType: 'jw',
+    icons: 'vid',
+    startAt: 95,
+    subtitleUrl: 'https://cdn.example.com/en.vtt',
+    subtitleLabel: 'English',
+  });
   assert.ok(movie.url?.startsWith('https://vidlink.pro/movie/550?'));
   assert.ok(movie.url?.includes('primaryColor=E50914'));
   assert.ok(movie.url?.includes('secondaryColor=EEEEEE'));
   assert.ok(movie.url?.includes('iconColor=FFFFFF'));
+  assert.ok(movie.url?.includes('icons=vid'));
+  assert.ok(movie.url?.includes('player=jw'));
+  assert.ok(movie.url?.includes('startAt=95'));
+  assert.ok(movie.url?.includes('sub_label=English'));
   assert.ok(movie.url?.includes('autoplay=false'));
   assert.ok(movie.url?.includes('nextbutton=true'));
 
   const tv = buildVidLinkUrl({ mediaType: 'tv', tmdbId: 1396, season: 2, episode: 5 });
   assert.ok(tv.url?.startsWith('https://vidlink.pro/tv/1396/2/5?'));
 
-  const anime = buildVidLinkUrl({ mediaType: 'anime', malId: 16498, episode: 4, subOrDub: 'dub' });
-  assert.ok(anime.url?.startsWith('https://vidlink.pro/anime/16498/4/dub?'));
+  const anime = buildVidLinkUrl({
+    mediaType: 'anime',
+    malId: 40748,
+    episode: 1,
+    subOrDub: 'dub',
+    animeFallback: true,
+  });
+  assert.ok(anime.url?.startsWith('https://vidlink.pro/anime/40748/1/dub?'));
+  assert.ok(anime.url?.includes('fallback=true'));
 });
 
 test('buildVidLinkUrl refuses missing provider IDs instead of conflating TMDB and MAL IDs', () => {

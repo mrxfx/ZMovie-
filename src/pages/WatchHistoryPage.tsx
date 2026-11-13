@@ -1,6 +1,7 @@
 import { Clock, Play, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
+import { GlassButton, GlassPanel } from '../components/glass';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
@@ -14,28 +15,28 @@ export function WatchHistoryPage() {
   const { history, clearHistory } = useLibrary();
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
-      <div className="border-b border-[#EEEEEE] dark:border-zinc-800 pb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="w-full pt-2 space-y-6">
+      <GlassPanel variant="default" padding="md" className="rounded-3xl flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
             Watch History
           </h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400 mt-1">
+          <p className="text-sm text-white/70 mt-1">
             Chronological log of titles launched in the ZyvoMovie player.
           </p>
         </div>
 
         {history.length > 0 && (
-          <button
-            type="button"
+          <GlassButton
+            variant="danger"
+            size="sm"
             onClick={() => void clearHistory()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#EEEEEE] dark:border-zinc-800 text-sm font-medium text-[#737373] hover:text-[#E50914] hover:border-[#E50914] transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Clear Watch History
-          </button>
+          </GlassButton>
         )}
-      </div>
+      </GlassPanel>
 
       {history.length === 0 ? (
         <EmptyState
@@ -45,7 +46,7 @@ export function WatchHistoryPage() {
           actionTo="/"
         />
       ) : (
-        <div className="divide-y divide-[#EEEEEE] dark:divide-zinc-800 rounded-2xl border border-[#EEEEEE] dark:border-zinc-800 bg-[#F7F7F8] dark:bg-zinc-900 overflow-hidden">
+        <GlassPanel variant="default" padding="none" className="rounded-3xl overflow-hidden divide-y divide-white/15">
           {history.map((item) => {
             const rawId =
               item.mediaType === 'anime'
@@ -60,17 +61,19 @@ export function WatchHistoryPage() {
             return (
               <div
                 key={item.historyId}
-                className="p-4 flex items-center justify-between gap-4 hover:bg-white dark:hover:bg-zinc-800/60 transition-colors"
+                className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-white/10 transition-colors"
               >
                 <div className="min-w-0">
                   <Link
                     to={`/${item.mediaType}/${rawId}`}
-                    className="font-display text-base font-semibold hover:text-[#E50914] line-clamp-1"
+                    className="font-display text-base font-semibold text-white hover:text-[#E50914] line-clamp-1 transition-colors"
                   >
                     {item.title}
                   </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373] dark:text-zinc-400 font-mono-tabular">
-                    <span className="font-sans uppercase">{item.mediaType}</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/65 font-mono-tabular">
+                    <span className="font-sans uppercase font-semibold text-[#E50914]">
+                      {item.mediaType}
+                    </span>
                     {item.season && item.episode ? (
                       <>
                         <span aria-hidden="true">·</span>
@@ -92,17 +95,18 @@ export function WatchHistoryPage() {
                   </div>
                 </div>
 
-                <Link
+                <GlassButton
+                  variant="primary"
+                  size="sm"
                   to={`/watch/${item.mediaType}/${rawId}${watchQuery}`}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-xs font-semibold whitespace-nowrap shrink-0"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   Watch
-                </Link>
+                </GlassButton>
               </div>
             );
           })}
-        </div>
+        </GlassPanel>
       )}
     </div>
   );

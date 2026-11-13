@@ -33,6 +33,15 @@ service cloud.firestore {
       return isOwner(uid) && request.auth.token.email_verified == true;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && (
+          request.auth.token.email == 'rahulhaldarx15@gmail.com'
+          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
     function isOptionalString(data, field, maxLen) {
       return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
     }
@@ -60,7 +69,7 @@ service cloud.firestore {
         && data.mediaId is string && data.mediaId == mediaId && isValidId(data.mediaId)
         && data.mediaType is string && data.mediaType in ['movie', 'tv', 'anime']
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
-        && isOptionalString(data, 'posterPath', 500)
+        && isOptionalString(data, 'posterPath', 400000)
         && isOptionalString(data, 'releaseYear', 10)
         && isOptionalNumber(data, 'voteAverage')
         && isOptionalNumber(data, 'tmdbId')
@@ -75,8 +84,8 @@ service cloud.firestore {
         && data.mediaId is string && data.mediaId == mediaId && isValidId(data.mediaId)
         && data.mediaType is string && data.mediaType in ['movie', 'tv', 'anime']
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
-        && isOptionalString(data, 'posterPath', 500)
-        && isOptionalString(data, 'backdropPath', 500)
+        && isOptionalString(data, 'posterPath', 400000)
+        && isOptionalString(data, 'backdropPath', 400000)
         && isOptionalNumber(data, 'tmdbId')
         && isOptionalNumber(data, 'malId')
         && isOptionalNumber(data, 'season')
@@ -97,7 +106,7 @@ service cloud.firestore {
         && data.mediaId is string && isValidId(data.mediaId)
         && data.mediaType is string && data.mediaType in ['movie', 'tv', 'anime']
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
-        && isOptionalString(data, 'posterPath', 500)
+        && isOptionalString(data, 'posterPath', 400000)
         && isOptionalNumber(data, 'tmdbId')
         && isOptionalNumber(data, 'malId')
         && isOptionalNumber(data, 'season')
@@ -118,12 +127,74 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidCatalogItem(data, itemId) {
+      return data.keys().hasAll(['itemId', 'mediaType', 'title', 'overview', 'releaseYear', 'voteAverage', 'featured', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'itemId', 'mediaType', 'title', 'overview', 'posterPath', 'backdropPath',
+          'releaseYear', 'voteAverage', 'runtime', 'originalLanguage', 'genres',
+          'tmdbId', 'malId', 'seasonCount', 'episodeCount', 'featured',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.itemId is string && data.itemId == itemId && isValidId(data.itemId)
+        && data.mediaType is string && data.mediaType in ['movie', 'tv', 'anime']
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.overview is string && data.overview.size() >= 1 && data.overview.size() <= 4000
+        && isOptionalString(data, 'posterPath', 400000)
+        && isOptionalString(data, 'backdropPath', 400000)
+        && data.releaseYear is string && data.releaseYear.size() >= 1 && data.releaseYear.size() <= 10
+        && data.voteAverage is number && data.voteAverage >= 0 && data.voteAverage <= 10
+        && isOptionalNumber(data, 'runtime')
+        && isOptionalString(data, 'originalLanguage', 16)
+        && (!( 'genres' in data ) || (data.genres is list && data.genres.size() <= 10 && (data.genres.size() == 0 || data.genres[0] is string)))
+        && isOptionalNumber(data, 'tmdbId')
+        && isOptionalNumber(data, 'malId')
+        && isOptionalNumber(data, 'seasonCount')
+        && isOptionalNumber(data, 'episodeCount')
+        && data.featured is bool
+        && data.createdBy is string && data.createdBy == request.auth.uid && isValidId(data.createdBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     // --- Collection Rules ---
 
     // Connection health check document (read-only)
     match /test/connection {
       allow get: if true;
       allow list, write: if false;
+    }
+
+    // Admin role directory (read-only by self, never writable from client SDK)
+    match /admins/{uid} {
+      allow get: if isOwner(uid) && isValidId(uid);
+      allow list, write: if false;
+    }
+
+    // Admin-published catalog entries (publicly readable, strictly admin-only write)
+    match /catalogItems/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if true;
+
+      allow create: if isAdmin()
+        && isValidId(itemId)
+        && isValidCatalogItem(incoming(), itemId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isAdmin()
+        && isValidId(itemId)
+        && isValidCatalogItem(incoming(), itemId)
+        && incoming().itemId == existing().itemId
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'mediaType', 'title', 'overview', 'posterPath', 'backdropPath',
+          'releaseYear', 'voteAverage', 'runtime', 'originalLanguage', 'genres',
+          'tmdbId', 'malId', 'seasonCount', 'episodeCount', 'featured', 'updatedAt'
+        ]);
+
+      allow delete: if isAdmin() && isValidId(itemId);
     }
 
     match /users/{uid} {

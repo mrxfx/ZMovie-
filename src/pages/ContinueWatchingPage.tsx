@@ -2,6 +2,7 @@ import { Play, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLibrary } from '../context/LibraryContext';
 import { formatPlaybackTime } from '../utils/watchProgress';
+import { GlassBadge, GlassPanel } from '../components/glass';
 import { EmptyState } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
 
@@ -15,20 +16,20 @@ export function ContinueWatchingPage() {
   const { watchProgress, removeWatchProgress } = useLibrary();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
-      <div className="border-b border-[#EEEEEE] dark:border-zinc-800 pb-6 flex items-end justify-between gap-4">
+    <div className="w-full pt-2 space-y-6">
+      <GlassPanel variant="default" padding="md" className="rounded-3xl flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
             Continue Watching
           </h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400 mt-1">
+          <p className="text-sm text-white/70 mt-1">
             Playback checkpoints synced from supported player progress events.
           </p>
         </div>
-        <span className="text-sm font-mono-tabular text-[#737373]">
+        <span className="px-3.5 py-1.5 rounded-full glass-control text-xs sm:text-sm font-mono-tabular text-white/80">
           {watchProgress.length} {watchProgress.length === 1 ? 'item' : 'items'}
         </span>
-      </div>
+      </GlassPanel>
 
       {watchProgress.length === 0 ? (
         <EmptyState
@@ -38,7 +39,7 @@ export function ContinueWatchingPage() {
           actionTo="/"
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
           {watchProgress.map((item) => {
             const rawId =
               item.mediaType === 'anime'
@@ -53,7 +54,7 @@ export function ContinueWatchingPage() {
             return (
               <article
                 key={item.mediaId}
-                className="rounded-xl overflow-hidden border border-[#EEEEEE] dark:border-zinc-800 bg-[#F7F7F8] dark:bg-zinc-900 flex flex-col"
+                className="glass-surface glass-specular rounded-2xl overflow-hidden flex flex-col hover:-translate-y-0.5 transition-all"
               >
                 <Link
                   to={`/watch/${item.mediaType}/${rawId}${watchQuery}`}
@@ -64,16 +65,16 @@ export function ContinueWatchingPage() {
                       src={item.backdropPath || item.posterPath}
                       alt={item.title}
                       referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300"
                     />
                   ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-4">
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-white">
-                      <Play className="w-4 h-4 fill-current text-[#E50914]" />
+                    <GlassBadge variant="dark" size="sm">
+                      <Play className="w-3.5 h-3.5 fill-current text-[#E50914]" />
                       {item.completed ? 'Watch Again' : `Resume ${formatPlaybackTime(item.currentTime)}`}
-                    </span>
+                    </GlassBadge>
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-white/30">
+                  <div className="absolute inset-x-0 bottom-0 h-1.5 bg-white/25">
                     <div
                       className="h-full bg-[#E50914]"
                       style={{ width: `${Math.min(100, item.progressPercent)}%` }}
@@ -85,11 +86,11 @@ export function ContinueWatchingPage() {
                   <div className="min-w-0">
                     <Link
                       to={`/${item.mediaType}/${rawId}`}
-                      className="font-display text-base font-semibold hover:text-[#E50914] line-clamp-1"
+                      className="font-display text-base font-semibold text-white hover:text-[#E50914] line-clamp-1 transition-colors"
                     >
                       {item.title}
                     </Link>
-                    <p className="text-xs text-[#737373] dark:text-zinc-400 font-mono-tabular mt-1">
+                    <p className="text-xs text-white/65 font-mono-tabular mt-1">
                       {item.mediaType === 'tv' && item.season && item.episode
                         ? `S${item.season} E${item.episode} · `
                         : item.mediaType === 'anime' && item.episode
@@ -103,7 +104,7 @@ export function ContinueWatchingPage() {
                     type="button"
                     aria-label={`Remove ${item.title} from Continue Watching`}
                     onClick={() => void removeWatchProgress(item.mediaId)}
-                    className="p-2.5 rounded-lg border border-[#EEEEEE] dark:border-zinc-700 text-[#737373] hover:text-[#E50914] hover:border-[#E50914] transition-colors shrink-0"
+                    className="p-2.5 rounded-full glass-control text-white/75 hover:text-[#E50914] hover:border-[#E50914]/40 transition-colors shrink-0 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -6,20 +6,46 @@
     --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
     --zyvo-red: #E50914;
     --zyvo-red-dark: #B20710;
+    --zyvo-bg: #0D0F14;
+    --zyvo-text: #FFFFFF;
+    --zyvo-text-secondary: rgba(255, 255, 255, 0.72);
+
+    --glass-shell: rgba(26, 28, 34, 0.56);
+    --glass-white: rgba(255, 255, 255, 0.08);
+    --glass-surface: rgba(255, 255, 255, 0.11);
+    --glass-elevated: rgba(24, 26, 33, 0.76);
+    --glass-border: rgba(255, 255, 255, 0.22);
+    --glass-border-subtle: rgba(255, 255, 255, 0.14);
+    --glass-highlight: rgba(255, 255, 255, 0.28);
+    --glass-shadow: 0 24px 64px -18px rgba(0, 0, 0, 0.52), 0 4px 16px -4px rgba(0, 0, 0, 0.28);
+    --glass-shadow-hover: 0 28px 72px -18px rgba(0, 0, 0, 0.65), 0 8px 24px -6px rgba(0, 0, 0, 0.38);
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #FFFFFF;
-    color: #171717;
-    overflow-x: hidden;
+    background-color: var(--zyvo-bg);
+    color: var(--zyvo-text);
+    overflow-x: clip;
   }
 
-  .dark body {
-    background-color: #0D0D0F;
-    color: #F5F5F7;
+  select option {
+    background-color: #181a20;
+    color: #ffffff;
   }
 
   h1, h2, h3, h4, .font-display {
@@ -29,6 +55,134 @@
   .font-mono-tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ============================================================================
+   APPLE VISIONOS + ZYVOTUBE SPATIAL LIQUID GLASS SYSTEM
+   Includes -webkit-backdrop-filter & graceful @supports fallback
+   ============================================================================ */
+
+.glass-shell {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(28, 30, 38, 0.56) 45%,
+    rgba(20, 22, 28, 0.64) 100%
+  );
+  -webkit-backdrop-filter: blur(34px) saturate(185%);
+  backdrop-filter: blur(34px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 36px 96px -22px rgba(0, 0, 0, 0.72);
+}
+
+.glass-surface {
+  background-color: var(--glass-surface);
+  -webkit-backdrop-filter: blur(22px) saturate(175%);
+  backdrop-filter: blur(22px) saturate(175%);
+  border: 1px solid var(--glass-border-subtle);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    var(--glass-shadow);
+}
+
+.glass-white {
+  background-color: var(--glass-white);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid var(--glass-border-subtle);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 32px -12px rgba(0, 0, 0, 0.4);
+}
+
+.glass-elevated {
+  background-color: var(--glass-elevated);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow-hover);
+}
+
+.glass-dark {
+  background-color: rgba(14, 16, 22, 0.62);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 18px 42px -12px rgba(0, 0, 0, 0.55);
+  color: #FFFFFF;
+}
+
+.glass-control {
+  background-color: rgba(255, 255, 255, 0.13);
+  -webkit-backdrop-filter: blur(18px) saturate(175%);
+  backdrop-filter: blur(18px) saturate(175%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 4px 14px -4px rgba(0, 0, 0, 0.32);
+}
+
+.glass-badge {
+  background-color: rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 14px -4px rgba(0, 0, 0, 0.35);
+}
+
+.glass-specular {
+  position: relative;
+}
+.glass-specular::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.04) 36%,
+    transparent 62%
+  );
+  opacity: 0.7;
+}
+
+.glass-bottom-dock {
+  background: rgba(18, 22, 29, 0.58);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* Graceful fallback for browsers without backdrop-filter support */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-shell,
+  .glass-surface,
+  .glass-white,
+  .glass-control,
+  .glass-badge,
+  .glass-elevated,
+  .glass-dark {
+    background-color: rgba(24, 26, 33, 0.94);
+  }
+  .glass-bottom-dock {
+    background: rgba(18, 22, 29, 0.92);
   }
 }
 

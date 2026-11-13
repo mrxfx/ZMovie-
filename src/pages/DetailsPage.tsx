@@ -13,7 +13,9 @@ import { Link, useParams } from 'react-router-dom';
 import { fetchMediaDetails, fetchTvSeasonEpisodes } from '../services/catalogApi';
 import type { EpisodeSummary, MediaDetails, MediaType } from '../types/media';
 import { useLibrary } from '../context/LibraryContext';
+import { useAdminCatalog } from '../context/AdminCatalogContext';
 import { createCanonicalMediaId } from '../utils/watchProgress';
+import { GlassBadge, GlassButton, GlassModal, GlassPanel } from '../components/glass';
 import { MediaCarousel } from '../components/MediaCarousel';
 import { CatalogNoticeBanner, ErrorState, HeroSkeleton } from '../components/StateBlocks';
 import { useSeoMetadata } from '../utils/seo';
@@ -35,6 +37,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
 
   const { isInWatchlist, toggleWatchlist, recordRecentlyViewed, watchProgress, preferences } =
     useLibrary();
+  const { findAdminMediaById, toMediaDetails, loadingAdminCatalog } = useAdminCatalog();
 
   useSeoMetadata({
     title: details ? `${details.title} (${details.releaseYear || 'Details'}) – ZyvoMovie` : 'Details – ZyvoMovie',
@@ -43,6 +46,26 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   });
 
   const loadDetails = async () => {
+    const adminMatch = findAdminMediaById(mediaType, id);
+    if (adminMatch) {
+      const converted = toMediaDetails(adminMatch);
+      setDetails(converted);
+      setNotice(undefined);
+      setEpisodes(converted.episodes || []);
+      if (converted.seasons && converted.seasons.length > 0) {
+        setSelectedSeason(converted.seasons[0].seasonNumber);
+      }
+      recordRecentlyViewed(converted);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (id.startsWith('adm_') && loadingAdminCatalog) {
+      setLoading(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setBackdropErr(false);
@@ -67,11 +90,11 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   useEffect(() => {
     void loadDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaType, id]);
+  }, [mediaType, id, findAdminMediaById, loadingAdminCatalog]);
 
   const handleSeasonChange = async (seasonNum: number) => {
     setSelectedSeason(seasonNum);
-    if (mediaType !== 'tv') return;
+    if (mediaType !== 'tv' || details?.source === 'admin-firestore') return;
     setLoadingEpisodes(true);
     try {
       const res = await fetchTvSeasonEpisodes(id, seasonNum);
@@ -85,7 +108,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+      <div className="w-full pt-2 space-y-6">
         <HeroSkeleton />
       </div>
     );
@@ -93,7 +116,7 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
 
   if (error || !details) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
+      <div className="w-full pt-4">
         <ErrorState
           title="Title unavailable"
           message={error || 'The requested title could not be found.'}
@@ -107,9 +130,11 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   const saved = isInWatchlist(canonicalId);
   const existingProgress = watchProgress.find((p) => p.mediaId === canonicalId);
   const rawWatchId =
-    mediaType === 'anime'
-      ? details.malId ?? details.id.replace(/^anime_/, '')
-      : details.tmdbId ?? details.id.replace(/^(movie|tv)_/, '');
+    details.source === 'admin-firestore'
+      ? details.id
+      : mediaType === 'anime'
+        ? details.malId ?? details.id.replace(/^anime_/, '')
+        : details.tmdbId ?? details.id.replace(/^(movie|tv)_/, '');
   const watchPath =
     mediaType === 'tv'
       ? `/watch/tv/${rawWatchId}?s=${existingProgress?.season || selectedSeason}&e=${existingProgress?.episode || 1}`
@@ -120,25 +145,25 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
   const trailer = details.videos.find((v) => v.type === 'Trailer') || details.videos[0];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-10">
+    <div className="w-full pt-2 space-y-10">
       {notice && <CatalogNoticeBanner notice={notice} />}
 
-      {/* Details Hero */}
-      <section className="relative rounded-2xl overflow-hidden bg-[#171717] border border-[#EEEEEE] dark:border-zinc-800">
+      {/* Cinematic Backdrop + Floating Liquid Glass Metadata Panel */}
+      <section className="relative rounded-3xl overflow-hidden bg-zinc-950 p-4 sm:p-7 md:p-9 shadow-[0_24px_60px_-16px_rgba(17,24,39,0.3)]">
         {(details.backdropPath || details.posterPath) && !backdropErr && (
           <img
             src={details.backdropPath || details.posterPath || ''}
             alt={details.title}
             referrerPolicy="no-referrer"
             onError={() => setBackdropErr(true)}
-            className="absolute inset-0 w-full h-full object-cover opacity-40"
+            className="absolute inset-0 w-full h-full object-cover opacity-55"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/75 to-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25" />
 
-        <div className="relative z-10 p-6 sm:p-10 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8 items-start">
-          {/* Poster */}
-          <div className="w-40 sm:w-52 md:w-full aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 mx-auto md:mx-0">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-[230px_1fr] gap-6 md:gap-8 items-start">
+          {/* Poster Card */}
+          <div className="w-40 sm:w-52 md:w-full aspect-[2/3] rounded-2xl overflow-hidden glass-surface shrink-0 mx-auto md:mx-0 shadow-2xl">
             {details.posterPath && !posterErr ? (
               <img
                 src={details.posterPath}
@@ -148,79 +173,75 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-zinc-400">
+              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-zinc-500">
                 <Film className="w-8 h-8 text-[#E50914] mb-2" />
                 <span className="text-xs text-center">{details.title}</span>
               </div>
             )}
           </div>
 
-          {/* Metadata */}
-          <div className="space-y-5 text-white">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-zinc-300 font-mono-tabular">
-                <span className="font-sans font-semibold text-[#E50914] uppercase tracking-wide">
+          {/* Floating Liquid Glass Metadata Panel */}
+          <GlassPanel variant="dark" padding="lg" className="rounded-3xl space-y-5">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <GlassBadge variant="red" size="xs" className="uppercase tracking-wide">
                   {mediaType === 'tv' ? 'TV Series' : mediaType === 'anime' ? 'Anime' : 'Movie'}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {details.releaseYear || 'TBA'}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                </GlassBadge>
+                <GlassBadge variant="default" size="xs">
+                  <Star className="w-3 h-3 fill-[#E50914] text-[#E50914]" />
                   {details.voteAverage > 0 ? details.voteAverage.toFixed(1) : 'NR'}
-                </span>
+                </GlassBadge>
+                <GlassBadge variant="subtle" size="xs" className="font-mono-tabular">
+                  <Calendar className="w-3 h-3" />
+                  {details.releaseYear || 'TBA'}
+                </GlassBadge>
                 {details.runtime && (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {details.runtime}m
-                    </span>
-                  </>
+                  <GlassBadge variant="subtle" size="xs" className="font-mono-tabular">
+                    <Clock className="w-3 h-3" />
+                    {details.runtime}m
+                  </GlassBadge>
                 )}
               </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-balance">
+              <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-balance text-white">
                 {details.title}
               </h1>
 
               {details.tagline && (
-                <p className="text-sm italic text-zinc-300">{details.tagline}</p>
+                <p className="text-sm italic text-white/75">{details.tagline}</p>
               )}
             </div>
 
             {details.genres.length > 0 && (
-              <p className="text-xs sm:text-sm text-zinc-300">
-                {details.genres.join(' · ')}
-              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {details.genres.map((genre) => (
+                  <GlassBadge key={genre} variant="default" size="sm">
+                    {genre}
+                  </GlassBadge>
+                ))}
+              </div>
             )}
 
-            <p className="text-sm sm:text-base text-zinc-200 leading-relaxed max-w-3xl">
+            <p className="text-sm sm:text-base text-white/85 leading-relaxed max-w-3xl">
               {details.overview}
             </p>
 
             {details.studios && details.studios.length > 0 && (
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-white/60">
                 Production: {details.studios.join(', ')}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link
-                to={watchPath}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors whitespace-nowrap"
-              >
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              <GlassButton variant="white" size="lg" to={watchPath}>
                 <Play className="w-4 h-4 fill-current" />
                 {existingProgress && !existingProgress.completed ? 'Resume Watching' : 'Watch Now'}
-              </Link>
+              </GlassButton>
 
-              <button
-                type="button"
+              <GlassButton
+                variant="darkGlass"
+                size="lg"
                 onClick={() => void toggleWatchlist(details)}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
                 {saved ? (
                   <>
@@ -233,53 +254,65 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
                     Add to My List
                   </>
                 )}
-              </button>
+              </GlassButton>
 
               {trailer && (
-                <button
-                  type="button"
-                  onClick={() => setShowTrailer((v) => !v)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition-colors whitespace-nowrap"
+                <GlassButton
+                  variant="glass"
+                  size="lg"
+                  onClick={() => setShowTrailer(true)}
                 >
                   <Youtube className="w-4 h-4 text-[#E50914]" />
-                  {showTrailer ? 'Hide Trailer' : 'Watch Trailer'}
-                </button>
+                  Watch Trailer
+                </GlassButton>
               )}
             </div>
-          </div>
+          </GlassPanel>
         </div>
       </section>
 
-      {/* Embedded YouTube Trailer when toggled */}
-      {showTrailer && trailer && (
-        <section className="space-y-3">
-          <h2 className="font-display text-xl font-bold">Official Trailer</h2>
-          <div className="aspect-video rounded-2xl overflow-hidden border border-[#EEEEEE] dark:border-zinc-800 bg-black">
+      {/* Glass Modal Trailer Viewer */}
+      {trailer && (
+        <GlassModal
+          open={showTrailer}
+          onClose={() => setShowTrailer(false)}
+          title={`${details.title} — Official Trailer`}
+          maxWidthClass="max-w-4xl"
+        >
+          <div className="aspect-video rounded-2xl overflow-hidden bg-black">
             <iframe
               title={`${details.title} Trailer`}
-              src={`https://www.youtube-nocookie.com/embed/${trailer.key}`}
+              src={`https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1`}
               className="w-full h-full"
+              allow="autoplay; fullscreen"
               allowFullScreen
             />
           </div>
-        </section>
+        </GlassModal>
       )}
 
       {/* TV Seasons & Episodes or Anime Episode List */}
       {(mediaType === 'tv' || mediaType === 'anime') && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="font-display text-xl sm:text-2xl font-bold">Episodes</h2>
+            <div className="flex items-center gap-2.5">
+              <span className="w-1 h-5 rounded-full bg-[#E50914]" aria-hidden="true" />
+              <h2 className="font-display text-xl sm:text-2xl font-bold">Episodes</h2>
+            </div>
+
             {mediaType === 'tv' && details.seasons && details.seasons.length > 0 && (
               <div className="flex items-center gap-2">
-                <label htmlFor="details-season-select" className="text-sm font-medium text-[#737373]">
+                <label
+                  htmlFor="details-season-select"
+                  className="text-sm font-medium text-white/70"
+                >
                   Season:
                 </label>
                 <select
                   id="details-season-select"
                   value={selectedSeason}
                   onChange={(e) => void handleSeasonChange(Number(e.target.value))}
-                  className="px-3.5 py-2 rounded-lg bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 text-sm font-medium"
+                  className="px-3.5 py-2 rounded-full glass-control text-sm font-medium text-white focus:outline-none focus:border-white/45"
                 >
                   {details.seasons.map((s) => (
                     <option key={s.id} value={s.seasonNumber}>
@@ -292,11 +325,13 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
           </div>
 
           {loadingEpisodes ? (
-            <p className="text-sm text-[#737373]">Loading episodes...</p>
+            <p className="text-sm text-white/65">Loading episodes...</p>
           ) : episodes.length === 0 ? (
-            <p className="text-sm text-[#737373]">
-              Episode guide not available for this title. You can still launch the player directly.
-            </p>
+            <GlassPanel variant="subtle" padding="md">
+              <p className="text-sm text-white/70">
+                Episode guide not available for this title. You can still launch the player directly.
+              </p>
+            </GlassPanel>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {episodes.slice(0, 24).map((ep) => {
@@ -308,23 +343,23 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
                   <Link
                     key={`${ep.seasonNumber}-${ep.episodeNumber}`}
                     to={epWatchUrl}
-                    className="p-4 rounded-xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 hover:border-[#E50914] transition-colors flex flex-col justify-between gap-2"
+                    className="group p-4 rounded-2xl glass-surface glass-specular hover:border-white/40 hover:-translate-y-0.5 transition-all flex flex-col justify-between gap-2"
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2 text-xs text-[#737373] dark:text-zinc-400 font-mono-tabular">
+                      <div className="flex items-center justify-between gap-2 text-xs text-white/60 font-mono-tabular">
                         <span>Episode {ep.episodeNumber}</span>
                         {ep.runtime ? <span>{ep.runtime}m</span> : null}
                       </div>
-                      <h3 className="font-display text-sm font-semibold mt-1 line-clamp-1">
+                      <h3 className="font-display text-sm font-semibold text-white mt-1 line-clamp-1 group-hover:text-[#E50914] transition-colors">
                         {ep.name}
                       </h3>
                       {ep.overview && (
-                        <p className="text-xs text-[#737373] dark:text-zinc-400 mt-1 line-clamp-2">
+                        <p className="text-xs text-white/65 mt-1 line-clamp-2">
                           {ep.overview}
                         </p>
                       )}
                     </div>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#E50914] pt-1">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/90 group-hover:text-[#E50914] pt-1">
                       <Play className="w-3.5 h-3.5 fill-current" />
                       Play Episode
                     </span>
@@ -336,21 +371,21 @@ export function DetailsPage({ mediaType }: { mediaType: MediaType }) {
         </section>
       )}
 
-      {/* Cast */}
+      {/* Transparent Glass Cast Cards */}
       {details.credits.length > 0 && (
         <section className="space-y-4">
-          <h2 className="font-display text-xl sm:text-2xl font-bold">Cast & Characters</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-1 h-5 rounded-full bg-[#E50914]" aria-hidden="true" />
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-white">Cast &amp; Characters</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             {details.credits.slice(0, 12).map((c) => (
-              <div
-                key={`${c.id}-${c.name}`}
-                className="p-3 rounded-xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800"
-              >
-                <p className="font-display text-sm font-semibold line-clamp-1">{c.name}</p>
-                <p className="text-xs text-[#737373] dark:text-zinc-400 line-clamp-1 mt-0.5">
+              <GlassPanel key={`${c.id}-${c.name}`} variant="subtle" padding="sm">
+                <p className="font-display text-sm font-semibold text-white line-clamp-1">{c.name}</p>
+                <p className="text-xs text-white/65 line-clamp-1 mt-0.5">
                   {c.character}
                 </p>
-              </div>
+              </GlassPanel>
             ))}
           </div>
         </section>

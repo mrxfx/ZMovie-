@@ -23,7 +23,7 @@
         "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "posterPath": { "type": "string", "maxLength": 500 },
+        "posterPath": { "type": "string", "maxLength": 400000 },
         "releaseYear": { "type": "string", "maxLength": 10 },
         "voteAverage": { "type": "number" },
         "tmdbId": { "type": "number" },
@@ -41,8 +41,8 @@
         "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "posterPath": { "type": "string", "maxLength": 500 },
-        "backdropPath": { "type": "string", "maxLength": 500 },
+        "posterPath": { "type": "string", "maxLength": 400000 },
+        "backdropPath": { "type": "string", "maxLength": 400000 },
         "tmdbId": { "type": "number" },
         "malId": { "type": "number" },
         "season": { "type": "number" },
@@ -66,7 +66,7 @@
         "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "posterPath": { "type": "string", "maxLength": 500 },
+        "posterPath": { "type": "string", "maxLength": 400000 },
         "tmdbId": { "type": "number" },
         "malId": { "type": "number" },
         "season": { "type": "number" },
@@ -90,6 +90,33 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "theme", "language", "autoplayNext", "preferredAnimeAudio", "saveSearchHistory", "saveWatchHistory", "updatedAt"]
+    },
+    "CatalogItem": {
+      "title": "CatalogItem",
+      "description": "Admin-published movie, TV series, or anime entry in ZyvoMovie",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "overview": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "posterPath": { "type": "string", "maxLength": 400000 },
+        "backdropPath": { "type": "string", "maxLength": 400000 },
+        "releaseYear": { "type": "string", "maxLength": 10 },
+        "voteAverage": { "type": "number" },
+        "runtime": { "type": "number" },
+        "originalLanguage": { "type": "string", "maxLength": 16 },
+        "genres": { "type": "array" },
+        "tmdbId": { "type": "number" },
+        "malId": { "type": "number" },
+        "seasonCount": { "type": "number" },
+        "episodeCount": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["itemId", "mediaType", "title", "overview", "releaseYear", "voteAverage", "featured", "createdBy", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -112,6 +139,10 @@
     "/users/{uid}/preferences/{prefId}": {
       "schema": { "$ref": "#/entities/UserPreferences" },
       "description": "User application settings document (settings)"
+    },
+    "/catalogItems/{itemId}": {
+      "schema": { "$ref": "#/entities/CatalogItem" },
+      "description": "Admin-published catalog entries visible across the platform"
     }
   }
 }

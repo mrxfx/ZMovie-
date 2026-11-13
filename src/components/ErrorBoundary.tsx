@@ -29,27 +29,27 @@ export class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-white dark:bg-[#0D0D0F] text-[#171717] dark:text-zinc-100 flex items-center justify-center p-6">
-          <div className="max-w-lg w-full bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 rounded-2xl p-8 text-center">
-            <div className="w-12 h-12 rounded-xl bg-[#E50914]/10 text-[#E50914] flex items-center justify-center mx-auto mb-4">
+        <div className="min-h-screen bg-[#0D0F14] text-white flex items-center justify-center p-6">
+          <div className="max-w-lg w-full glass-elevated glass-specular rounded-3xl p-8 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#E50914]/20 border border-[#E50914]/35 text-[#E50914] flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h1 className="font-display text-2xl font-bold mb-2">Something went wrong</h1>
-            <p className="text-sm text-[#737373] dark:text-zinc-400 mb-6 break-words">
+            <h1 className="font-display text-2xl font-bold mb-2 text-white">Something went wrong</h1>
+            <p className="text-sm text-white/70 mb-6 break-words">
               {this.state.message}
             </p>
             <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
                 Reload Page
               </button>
               <a
                 href="/"
-                className="inline-flex items-center px-5 py-2.5 rounded-lg border border-[#EEEEEE] dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium hover:bg-[#F7F7F8] dark:hover:bg-zinc-700 transition-colors"
+                className="inline-flex items-center px-5 py-2.5 rounded-full glass-control text-sm font-medium text-white hover:bg-white/20 transition-colors"
               >
                 Go Home
               </a>

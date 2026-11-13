@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GlassButton, GlassPanel } from '../components/glass';
 import { useSeoMetadata } from '../utils/seo';
 
 function GoogleButton({
@@ -18,7 +19,7 @@ function GoogleButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#EEEEEE] dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-[#F7F7F8] dark:hover:bg-zinc-700 text-sm font-semibold transition-colors disabled:opacity-50"
+      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-full glass-control hover:bg-white/20 text-sm font-semibold text-white transition-all disabled:opacity-50 cursor-pointer"
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
         <path
@@ -42,6 +43,9 @@ function GoogleButton({
     </button>
   );
 }
+
+const INPUT_CLASS =
+  'w-full px-4 py-2.5 rounded-full bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/45 transition-all';
 
 export function LoginPage() {
   useSeoMetadata({
@@ -72,11 +76,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-12">
-      <div className="p-8 rounded-2xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 space-y-6">
+    <div className="max-w-md mx-auto px-4 pt-10 sm:pt-14">
+      <GlassPanel variant="elevated" padding="lg" className="rounded-3xl space-y-6">
         <div className="text-center space-y-1.5">
-          <h1 className="font-display text-2xl font-extrabold">Sign in to ZyvoMovie</h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400">
+          <h1 className="font-display text-2xl font-extrabold text-white">Sign in to ZyvoMovie</h1>
+          <p className="text-sm text-white/70">
             Sync your watchlist, watch history, and resume progress across devices.
           </p>
         </div>
@@ -84,7 +88,7 @@ export function LoginPage() {
         {authError && (
           <div
             role="alert"
-            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#E50914]/10 border border-[#E50914]/30 text-xs text-[#E50914]"
+            className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#E50914]/20 border border-[#E50914]/40 text-xs text-red-200"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{authError}</span>
@@ -93,10 +97,10 @@ export function LoginPage() {
 
         <GoogleButton label="Continue with Google" onClick={handleGoogle} disabled={busy} />
 
-        <div className="flex items-center gap-3 text-xs text-[#737373]">
-          <div className="h-px flex-1 bg-[#EEEEEE] dark:bg-zinc-800" />
+        <div className="flex items-center gap-3 text-xs text-white/55">
+          <div className="h-px flex-1 bg-white/15" />
           <span>or sign in with email</span>
-          <div className="h-px flex-1 bg-[#EEEEEE] dark:bg-zinc-800" />
+          <div className="h-px flex-1 bg-white/15" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,7 +117,7 @@ export function LoginPage() {
                 clearAuthError();
                 setEmail(e.target.value);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+              className={INPUT_CLASS}
             />
           </div>
 
@@ -136,26 +140,22 @@ export function LoginPage() {
                 clearAuthError();
                 setPassword(e.target.value);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+              className={INPUT_CLASS}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 rounded-xl bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors disabled:opacity-50"
-          >
+          <GlassButton type="submit" variant="primary" size="lg" disabled={busy} className="w-full">
             {busy ? 'Signing in...' : 'Sign In'}
-          </button>
+          </GlassButton>
         </form>
 
-        <p className="text-center text-xs text-[#737373] dark:text-zinc-400">
+        <p className="text-center text-xs text-white/65">
           Don&apos;t have an account?{' '}
           <Link to="/register" className="text-[#E50914] font-semibold hover:underline">
             Create one
           </Link>
         </p>
-      </div>
+      </GlassPanel>
     </div>
   );
 }
@@ -190,11 +190,11 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-12">
-      <div className="p-8 rounded-2xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 space-y-6">
+    <div className="max-w-md mx-auto px-4 pt-10 sm:pt-14">
+      <GlassPanel variant="elevated" padding="lg" className="rounded-3xl space-y-6">
         <div className="text-center space-y-1.5">
-          <h1 className="font-display text-2xl font-extrabold">Create ZyvoMovie Account</h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400">
+          <h1 className="font-display text-2xl font-extrabold text-white">Create ZyvoMovie Account</h1>
+          <p className="text-sm text-white/70">
             Start syncing your favorite movies, series, and anime.
           </p>
         </div>
@@ -202,7 +202,7 @@ export function RegisterPage() {
         {authError && (
           <div
             role="alert"
-            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#E50914]/10 border border-[#E50914]/30 text-xs text-[#E50914]"
+            className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#E50914]/20 border border-[#E50914]/40 text-xs text-red-200"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{authError}</span>
@@ -211,10 +211,10 @@ export function RegisterPage() {
 
         <GoogleButton label="Sign up with Google" onClick={handleGoogle} disabled={busy} />
 
-        <div className="flex items-center gap-3 text-xs text-[#737373]">
-          <div className="h-px flex-1 bg-[#EEEEEE] dark:bg-zinc-800" />
+        <div className="flex items-center gap-3 text-xs text-white/55">
+          <div className="h-px flex-1 bg-white/15" />
           <span>or register with email</span>
-          <div className="h-px flex-1 bg-[#EEEEEE] dark:bg-zinc-800" />
+          <div className="h-px flex-1 bg-white/15" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -233,7 +233,7 @@ export function RegisterPage() {
                 clearAuthError();
                 setDisplayName(e.target.value);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+              className={INPUT_CLASS}
             />
           </div>
 
@@ -250,7 +250,7 @@ export function RegisterPage() {
                 clearAuthError();
                 setEmail(e.target.value);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+              className={INPUT_CLASS}
             />
           </div>
 
@@ -268,26 +268,22 @@ export function RegisterPage() {
                 clearAuthError();
                 setPassword(e.target.value);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+              className={INPUT_CLASS}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 rounded-xl bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors disabled:opacity-50"
-          >
+          <GlassButton type="submit" variant="primary" size="lg" disabled={busy} className="w-full">
             {busy ? 'Creating Account...' : 'Create Account'}
-          </button>
+          </GlassButton>
         </form>
 
-        <p className="text-center text-xs text-[#737373] dark:text-zinc-400">
+        <p className="text-center text-xs text-white/65">
           Already have an account?{' '}
           <Link to="/login" className="text-[#E50914] font-semibold hover:underline">
             Sign in
           </Link>
         </p>
-      </div>
+      </GlassPanel>
     </div>
   );
 }
@@ -313,14 +309,14 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-12">
-      <div className="p-8 rounded-2xl bg-[#F7F7F8] dark:bg-zinc-900 border border-[#EEEEEE] dark:border-zinc-800 space-y-6">
+    <div className="max-w-md mx-auto px-4 pt-10 sm:pt-14">
+      <GlassPanel variant="elevated" padding="lg" className="rounded-3xl space-y-6">
         <div className="text-center space-y-1.5">
-          <div className="w-11 h-11 rounded-xl bg-[#E50914]/10 text-[#E50914] flex items-center justify-center mx-auto mb-2">
+          <div className="w-11 h-11 rounded-2xl bg-[#E50914]/12 border border-[#E50914]/25 text-[#E50914] flex items-center justify-center mx-auto mb-2">
             <Mail className="w-5 h-5" />
           </div>
-          <h1 className="font-display text-2xl font-extrabold">Reset Password</h1>
-          <p className="text-sm text-[#737373] dark:text-zinc-400">
+          <h1 className="font-display text-2xl font-extrabold text-white">Reset Password</h1>
+          <p className="text-sm text-white/70">
             Enter your account email to receive a Firebase password reset link.
           </p>
         </div>
@@ -328,7 +324,7 @@ export function ForgotPasswordPage() {
         {authError && (
           <div
             role="alert"
-            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#E50914]/10 border border-[#E50914]/30 text-xs text-[#E50914]"
+            className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#E50914]/20 border border-[#E50914]/40 text-xs text-red-200"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{authError}</span>
@@ -336,7 +332,7 @@ export function ForgotPasswordPage() {
         )}
 
         {sent ? (
-          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-sm text-emerald-800 dark:text-emerald-300 flex items-start gap-2.5">
+          <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/35 text-sm text-emerald-200 flex items-start gap-2.5">
             <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Reset link sent</p>
@@ -348,7 +344,7 @@ export function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="reset-email" className="block text-xs font-semibold mb-1.5">
+              <label htmlFor="reset-email" className="block text-xs font-semibold mb-1.5 text-white">
                 Email Address
               </label>
               <input
@@ -360,25 +356,21 @@ export function ForgotPasswordPage() {
                   clearAuthError();
                   setEmail(e.target.value);
                 }}
-                className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-[#EEEEEE] dark:border-zinc-700 text-sm focus:outline-none focus:border-[#E50914]"
+                className={INPUT_CLASS}
               />
             </div>
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full py-3 rounded-xl bg-[#E50914] hover:bg-[#B20710] text-white text-sm font-semibold transition-colors disabled:opacity-50"
-            >
+            <GlassButton type="submit" variant="primary" size="lg" disabled={busy} className="w-full">
               {busy ? 'Sending...' : 'Send Reset Link'}
-            </button>
+            </GlassButton>
           </form>
         )}
 
-        <p className="text-center text-xs text-[#737373]">
+        <p className="text-center text-xs text-white/65">
           <Link to="/login" className="text-[#E50914] font-semibold hover:underline">
             Back to Sign In
           </Link>
         </p>
-      </div>
+      </GlassPanel>
     </div>
   );
 }

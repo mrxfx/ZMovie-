@@ -1,4 +1,10 @@
-import type { MediaSummary, MediaType, WatchlistItem } from '../types/media';
+import type {
+  MediaSummary,
+  MediaType,
+  VidLinkIconsStyle,
+  VidLinkPlayerType,
+  WatchlistItem,
+} from '../types/media';
 
 export interface VidLinkParams {
   mediaType: MediaType;
@@ -7,24 +13,34 @@ export interface VidLinkParams {
   season?: number;
   episode?: number;
   subOrDub?: 'sub' | 'dub';
+  animeFallback?: boolean;
+  playerType?: VidLinkPlayerType;
+  icons?: VidLinkIconsStyle;
+  title?: boolean;
+  poster?: boolean;
   autoplay?: boolean;
+  nextbutton?: boolean;
+  startAt?: number;
   subtitleUrl?: string;
+  subtitleLabel?: string;
+  fallbackUrl?: string;
 }
 
-export function validateSubtitleUrl(rawUrl?: string): string | null {
+export function validateHttpsUrl(rawUrl?: string): string | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol !== 'https:') return null;
-    if (!/\.(vtt|srt)(\?.*)?$/i.test(parsed.pathname + parsed.search)) {
-      return parsed.toString();
-    }
     return parsed.toString();
   } catch {
     return null;
   }
+}
+
+export function validateSubtitleUrl(rawUrl?: string): string | null {
+  return validateHttpsUrl(rawUrl);
 }
 
 export function buildVidLinkUrl(params: VidLinkParams): { url: string | null; reason?: string } {
@@ -32,29 +48,48 @@ export function buildVidLinkUrl(params: VidLinkParams): { url: string | null; re
     primaryColor: 'E50914',
     secondaryColor: 'EEEEEE',
     iconColor: 'FFFFFF',
-    icons: 'default',
-    title: 'true',
-    poster: 'true',
+    icons: params.icons === 'vid' ? 'vid' : 'default',
+    player: params.playerType === 'jw' ? 'jw' : 'default',
+    title: params.title === false ? 'false' : 'true',
+    poster: params.poster === false ? 'false' : 'true',
     autoplay: params.autoplay ? 'true' : 'false',
-    nextbutton: 'true',
+    nextbutton: params.nextbutton === false ? 'false' : 'true',
   });
+
+  if (params.startAt && Number.isFinite(params.startAt) && params.startAt >= 5) {
+    baseQuery.set('startAt', String(Math.floor(params.startAt)));
+  }
 
   const validSubtitle = validateSubtitleUrl(params.subtitleUrl);
   if (validSubtitle) {
     baseQuery.set('sub_file', validSubtitle);
-    baseQuery.set('sub_label', 'Custom');
+    const label = (params.subtitleLabel || '').trim();
+    if (label) {
+      baseQuery.set('sub_label', label.slice(0, 40));
+    }
+  }
+
+  const validFallbackUrl = validateHttpsUrl(params.fallbackUrl);
+  if (validFallbackUrl) {
+    baseQuery.set('fallback_url', validFallbackUrl);
   }
 
   if (params.mediaType === 'movie') {
     if (!params.tmdbId || !Number.isInteger(params.tmdbId) || params.tmdbId <= 0) {
-      return { url: null, reason: 'A valid TMDB movie ID is required for VidLink movie playback.' };
+      return {
+        url: null,
+        reason: 'A valid TMDB movie ID is required for VidLink movie playback.',
+      };
     }
     return { url: `https://vidlink.pro/movie/${params.tmdbId}?${baseQuery.toString()}` };
   }
 
   if (params.mediaType === 'tv') {
     if (!params.tmdbId || !Number.isInteger(params.tmdbId) || params.tmdbId <= 0) {
-      return { url: null, reason: 'A valid TMDB series ID is required for VidLink TV playback.' };
+      return {
+        url: null,
+        reason: 'A valid TMDB series ID is required for VidLink TV playback.',
+      };
     }
     const season = params.season && params.season > 0 ? Math.floor(params.season) : 1;
     const episode = params.episode && params.episode > 0 ? Math.floor(params.episode) : 1;
@@ -72,6 +107,9 @@ export function buildVidLinkUrl(params: VidLinkParams): { url: string | null; re
   }
   const episode = params.episode && params.episode > 0 ? Math.floor(params.episode) : 1;
   const subOrDub = params.subOrDub === 'dub' ? 'dub' : 'sub';
+  if (params.animeFallback !== false) {
+    baseQuery.set('fallback', 'true');
+  }
   return {
     url: `https://vidlink.pro/anime/${params.malId}/${episode}/${subOrDub}?${baseQuery.toString()}`,
   };

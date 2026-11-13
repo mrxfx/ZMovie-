@@ -8,8 +8,25 @@ export interface ValidatedPlayerEvent {
   duration: number;
   progressPercent: number;
   completed: boolean;
+  mtmdbId?: number;
+  mediaType?: 'movie' | 'tv';
   season?: number;
   episode?: number;
+}
+
+export interface VidLinkMediaProgressEntry {
+  id: number;
+  type: 'movie' | 'tv';
+  title: string;
+  posterPath?: string;
+  backdropPath?: string;
+  watched: number;
+  duration: number;
+  progressPercent: number;
+  completed: boolean;
+  season?: number;
+  episode?: number;
+  lastUpdated?: number;
 }
 
 export const ALLOWED_PLAYER_ORIGINS: ReadonlySet<string> = new Set([
@@ -50,19 +67,21 @@ export function parsePlayerPostMessage(
   if (!payload || typeof payload !== 'object') return null;
   const record = payload as Record<string, unknown>;
 
-  // VidLink & standard postMessage adapters may wrap event in { type, data } or emit flat fields
+  // VidLink PLAYER_EVENT wraps data inside { type: "PLAYER_EVENT", data: { event, currentTime, duration, ... } }
+  if (record.type === 'MEDIA_DATA') return null;
+
   const inner =
     record.data && typeof record.data === 'object'
       ? (record.data as Record<string, unknown>)
       : record;
 
   const rawEvent =
-    typeof record.event === 'string'
-      ? record.event
-      : typeof record.type === 'string'
-        ? record.type
-        : typeof inner.event === 'string'
-          ? inner.event
+    typeof inner.event === 'string'
+      ? inner.event
+      : typeof record.event === 'string'
+        ? record.event
+        : typeof record.type === 'string'
+          ? record.type
           : null;
 
   if (!rawEvent) return null;
@@ -81,6 +100,13 @@ export function parsePlayerPostMessage(
     normalizedType === 'ended' ? 100 : calculateProgressPercent(currentTime, duration);
   const completed = isPlaybackCompleted(progressPercent, normalizedType);
 
+  const mtmdbId =
+    typeof inner.mtmdbId === 'number' && Number.isInteger(inner.mtmdbId) && inner.mtmdbId > 0
+      ? inner.mtmdbId
+      : undefined;
+  const mediaType =
+    inner.mediaType === 'movie' || inner.mediaType === 'tv' ? inner.mediaType : undefined;
+
   const season =
     typeof inner.season === 'number' && Number.isInteger(inner.season) && inner.season > 0
       ? inner.season
@@ -96,9 +122,70 @@ export function parsePlayerPostMessage(
     duration,
     progressPercent,
     completed,
+    mtmdbId,
+    mediaType,
     season,
     episode,
   };
+}
+
+export function parseVidLinkMediaData(
+  rawData: unknown,
+  origin: string,
+  sourceMatchesIframe: boolean
+): { rawMap: Record<string, unknown>; entries: VidLinkMediaProgressEntry[] } | null {
+  if (!sourceMatchesIframe) return null;
+  if (!isAllowedPlayerOrigin(origin)) return null;
+  if (!rawData || typeof rawData !== 'object') return null;
+
+  const record = rawData as Record<string, unknown>;
+  if (record.type !== 'MEDIA_DATA' || !record.data || typeof record.data !== 'object') {
+    return null;
+  }
+
+  const rawMap = record.data as Record<string, unknown>;
+  const entries: VidLinkMediaProgressEntry[] = [];
+
+  for (const [key, val] of Object.entries(rawMap)) {
+    if (!val || typeof val !== 'object') continue;
+    const item = val as Record<string, unknown>;
+    const numericId = Number(item.id ?? key);
+    if (!Number.isInteger(numericId) || numericId <= 0) continue;
+
+    const mediaType = item.type === 'tv' ? 'tv' : item.type === 'movie' ? 'movie' : null;
+    if (!mediaType) continue;
+
+    const progressObj =
+      item.progress && typeof item.progress === 'object'
+        ? (item.progress as Record<string, unknown>)
+        : null;
+    const watched = Number(progressObj?.watched ?? 0);
+    const duration = Number(progressObj?.duration ?? 0);
+    if (!Number.isFinite(watched) || watched < 0 || !Number.isFinite(duration) || duration < 0) {
+      continue;
+    }
+
+    const progressPercent = calculateProgressPercent(watched, duration);
+    const season = item.last_season_watched ? Number(item.last_season_watched) : undefined;
+    const episode = item.last_episode_watched ? Number(item.last_episode_watched) : undefined;
+
+    entries.push({
+      id: numericId,
+      type: mediaType,
+      title: typeof item.title === 'string' && item.title.trim() ? item.title : `Title #${numericId}`,
+      posterPath: typeof item.poster_path === 'string' ? item.poster_path : undefined,
+      backdropPath: typeof item.backdrop_path === 'string' ? item.backdrop_path : undefined,
+      watched,
+      duration,
+      progressPercent,
+      completed: isPlaybackCompleted(progressPercent),
+      season: season && Number.isInteger(season) && season > 0 ? season : undefined,
+      episode: episode && Number.isInteger(episode) && episode > 0 ? episode : undefined,
+      lastUpdated: typeof item.last_updated === 'number' ? item.last_updated : undefined,
+    });
+  }
+
+  return { rawMap, entries };
 }
 
 export interface ThrottleCheckInput {
