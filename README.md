@@ -1,11 +1,33 @@
-<div align="center">
+# ZyvoMovie
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+ZyvoMovie is a movie, TV series, and anime discovery and streaming platform in the Zyvo Ecosystem, designed with a Pure White (`#FFFFFF`) and Zyvo Red (`#E50914`) visual identity.
 
-  <h1>Built with AI Studio</h2>
+## Implemented Features
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- **21 Complete Routes**: Home, Movies, TV Shows, Anime, Global Search, Movie Details, TV Details, Anime Details, Watch Player, My List, Continue Watching, Watch History, Login, Register, Forgot Password, Profile, Settings, About, Privacy Policy, Terms of Service, and Custom 404.
+- **Server-Side TMDB Proxy (`/api/*`)**: Reads `TMDB_READ_ACCESS_TOKEN` exclusively on the server (`server/tmdb.ts`), with TTL caching, rate-limit handling, and an explicitly labeled local development fallback catalog when unconfigured.
+- **Dedicated Anime Adapter**: Uses Jikan v4 / MyAnimeList (`server/anime.ts`) so `malId` and `tmdbId` are never conflated.
+- **Replaceable Streaming Player Adapter**: VidLink Pro URL builder (`src/utils/mediaFilters.ts`) with provider terms/authorization gate, season/episode navigation, sub/dub switching, HTTPS subtitle configuration, and origin-validated throttled `postMessage` progress tracking (`src/utils/playerEvents.ts`).
+- **Firebase Authentication & Firestore**: Google Sign-In, Email/Password auth & password reset flows, guest-to-account sync, and strict private ownership rules (`firestore.rules`, `firebase-blueprint.json`).
+- **SEO**: Dynamic page `<title>`, Open Graph, Twitter cards, canonical links, Schema.org `WebApplication` JSON-LD, `/robots.txt`, and `/sitemap.xml`.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Setup & Environment Variables
 
-</div>
+1. Copy `.env.example` to `.env` and configure:
+   - `TMDB_READ_ACCESS_TOKEN`: Server-side TMDB v4 Bearer Read Access Token (optional for local development fallback; required for live TMDB catalog).
+   - `APP_URL`: Public URL for canonical/sitemap links.
+2. Firebase configuration is loaded from `firebase-applet-config.json`.
+   - Google Sign-In is provisioned automatically.
+   - To enable Email/Password sign-in, enable **Email/Password** under **Firebase Console → Authentication → Sign-in method**.
+3. Run locally:
+   ```bash
+   npm install
+   npm run dev
+   ```
+4. Run tests, typecheck, and build:
+   ```bash
+   npx --yes tsx --test src/utils/*.test.ts
+   npm run lint
+   npm run lint:rules
+   npm run build
+   ```

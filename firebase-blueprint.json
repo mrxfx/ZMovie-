@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated ZyvoMovie user profile document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "createdAt", "updatedAt"]
+    },
+    "WatchlistItem": {
+      "title": "WatchlistItem",
+      "description": "Saved movie, TV show, or anime in a user's My List",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "posterPath": { "type": "string", "maxLength": 500 },
+        "releaseYear": { "type": "string", "maxLength": 10 },
+        "voteAverage": { "type": "number" },
+        "tmdbId": { "type": "number" },
+        "malId": { "type": "number" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "mediaId", "mediaType", "title", "addedAt"]
+    },
+    "WatchProgressItem": {
+      "title": "WatchProgressItem",
+      "description": "Continue watching playback checkpoint for a movie, TV episode, or anime episode",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "posterPath": { "type": "string", "maxLength": 500 },
+        "backdropPath": { "type": "string", "maxLength": 500 },
+        "tmdbId": { "type": "number" },
+        "malId": { "type": "number" },
+        "season": { "type": "number" },
+        "episode": { "type": "number" },
+        "subOrDub": { "type": "string", "enum": ["sub", "dub"] },
+        "currentTime": { "type": "number" },
+        "duration": { "type": "number" },
+        "progressPercent": { "type": "number" },
+        "completed": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "mediaId", "mediaType", "title", "currentTime", "duration", "progressPercent", "updatedAt"]
+    },
+    "HistoryItem": {
+      "title": "HistoryItem",
+      "description": "Watch history log entry",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "historyId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mediaType": { "type": "string", "enum": ["movie", "tv", "anime"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "posterPath": { "type": "string", "maxLength": 500 },
+        "tmdbId": { "type": "number" },
+        "malId": { "type": "number" },
+        "season": { "type": "number" },
+        "episode": { "type": "number" },
+        "watchedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "historyId", "mediaId", "mediaType", "title", "watchedAt"]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "User playback, theme, language, and privacy preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "language": { "type": "string", "minLength": 2, "maxLength": 16 },
+        "autoplayNext": { "type": "boolean" },
+        "preferredAnimeAudio": { "type": "string", "enum": ["sub", "dub"] },
+        "saveSearchHistory": { "type": "boolean" },
+        "saveWatchHistory": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "theme", "language", "autoplayNext", "preferredAnimeAudio", "saveSearchHistory", "saveWatchHistory", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private authenticated user profile"
+    },
+    "/users/{uid}/watchlist/{mediaId}": {
+      "schema": { "$ref": "#/entities/WatchlistItem" },
+      "description": "User watchlist items"
+    },
+    "/users/{uid}/watchProgress/{mediaId}": {
+      "schema": { "$ref": "#/entities/WatchProgressItem" },
+      "description": "User continue watching checkpoints"
+    },
+    "/users/{uid}/history/{historyId}": {
+      "schema": { "$ref": "#/entities/HistoryItem" },
+      "description": "User chronological watch history"
+    },
+    "/users/{uid}/preferences/{prefId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "User application settings document (settings)"
+    }
+  }
+}

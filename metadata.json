@@ -1,0 +1,6 @@
+{
+  "name": "ZyvoMovie",
+  "description": "ZyvoMovie — Movie, TV Series, and Anime Discovery & Streaming Platform by the Zyvo Ecosystem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
