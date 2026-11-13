@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Maximize2,
+  MonitorUp,
   RotateCcw,
   ShieldCheck,
 } from 'lucide-react';
@@ -91,6 +92,13 @@ export function WatchPlayerPage() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastSavedRef = useRef<{ atMs: number; percent: number }>({ atMs: 0, percent: 0 });
   const historyRecordedRef = useRef<string>('');
+  const isInParentFrame = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
 
   useSeoMetadata({
     title: details ? `Watch ${details.title} – ZyvoMovie` : 'Watch Player – ZyvoMovie',
@@ -536,6 +544,43 @@ export function WatchPlayerPage() {
           </>
         )}
       </div>
+
+      {isInParentFrame && providerAuthorized && vidLinkResult.url && (
+        <GlassPanel
+          variant="subtle"
+          padding="sm"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-amber-400/35 bg-amber-500/10"
+        >
+          <div className="flex items-start gap-2.5 text-xs sm:text-sm text-white/85">
+            <MonitorUp className="w-4 h-4 text-[#E50914] shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong className="text-white">Seeing &ldquo;Please Disable Sandbox&rdquo;?</strong>{' '}
+              The embedded preview container wraps this app in a sandboxed iframe, which VidLink blocks.
+              Open the page or stream in a full browser tab for playback.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href={typeof window !== 'undefined' ? window.location.href : `/watch/${mediaType}/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#E50914] hover:bg-[#B20710] text-white text-xs font-semibold transition-colors"
+            >
+              Open Watch Page in New Tab
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href={vidLinkResult.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full glass-control hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+            >
+              Open VidLink Stream
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </GlassPanel>
+      )}
 
       {/* Liquid Glass Player Controls + Stream Adapter Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

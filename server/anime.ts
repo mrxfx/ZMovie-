@@ -101,7 +101,7 @@ async function jikanFetch<T>(endpoint: string, ttlMs = 600_000): Promise<T> {
     apiCache.set(cacheKey, json, ttlMs);
     return json;
   } catch (err) {
-    jikanCircuitOpenUntilMs = Date.now() + 60_000;
+    jikanCircuitOpenUntilMs = Date.now() + 10_000;
     throw err;
   } finally {
     clearTimeout(timeout);
