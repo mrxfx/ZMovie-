@@ -1,5 +1,16 @@
-import { createApiApp } from '../server/app';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { handleApiRequest } from '../server/handleApiRequest.js';
 
-const app = createApiApp();
-
-export default app;
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  try {
+    await handleApiRequest(req, res);
+  } catch (error) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Internal server error',
+      })
+    );
+  }
+}

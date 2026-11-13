@@ -1,5 +1,5 @@
-import { apiCache } from './cache';
-import { MOVIE_GENRES, TV_GENRES } from '../src/data/genres';
+import { apiCache } from './cache.js';
+import { MOVIE_GENRES, TV_GENRES } from '../src/data/genres.js';
 import type {
   CastMember,
   DiscoverFilters,
@@ -10,7 +10,7 @@ import type {
   PagedCatalogResponse,
   SeasonSummary,
   VideoItem,
-} from '../src/types/media';
+} from '../src/types/media.js';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';

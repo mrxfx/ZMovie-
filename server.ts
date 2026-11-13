@@ -1,14 +1,23 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createApiApp } from './server/app';
+import { handleApiRequest } from './server/handleApiRequest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
-  const app = createApiApp();
+  const app = express();
   const PORT = Number(process.env.PORT || 3000);
+
+  app.use((req, res, next) => {
+    void handleApiRequest(req, res)
+      .then((handled) => {
+        if (!handled) next();
+      })
+      .catch(next);
+  });
 
   // Vite Dev Middleware vs Static Prod Serving
   if (process.env.NODE_ENV !== 'production') {

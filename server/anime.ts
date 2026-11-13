@@ -1,5 +1,5 @@
-import { apiCache } from './cache';
-import { ANIME_GENRES } from '../src/data/genres';
+import { apiCache } from './cache.js';
+import { ANIME_GENRES } from '../src/data/genres.js';
 import type {
   CastMember,
   DiscoverFilters,
@@ -8,7 +8,7 @@ import type {
   MediaSummary,
   PagedCatalogResponse,
   VideoItem,
-} from '../src/types/media';
+} from '../src/types/media.js';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 
