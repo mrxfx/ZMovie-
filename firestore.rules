@@ -221,7 +221,7 @@ service cloud.firestore {
 
       match /watchlist/{mediaId} {
         allow get: if isOwner(uid) && isValidId(uid) && isValidId(mediaId);
-        allow list: if isOwner(uid) && resource.data.uid == request.auth.uid;
+        allow list: if isOwner(uid);
 
         allow create: if isVerifiedOwner(uid)
           && isValidId(uid)
@@ -236,7 +236,7 @@ service cloud.firestore {
 
       match /watchProgress/{mediaId} {
         allow get: if isOwner(uid) && isValidId(uid) && isValidId(mediaId);
-        allow list: if isOwner(uid) && resource.data.uid == request.auth.uid;
+        allow list: if isOwner(uid);
 
         allow create: if isVerifiedOwner(uid)
           && isValidId(uid)
@@ -263,7 +263,7 @@ service cloud.firestore {
 
       match /history/{historyId} {
         allow get: if isOwner(uid) && isValidId(uid) && isValidId(historyId);
-        allow list: if isOwner(uid) && resource.data.uid == request.auth.uid;
+        allow list: if isOwner(uid);
 
         allow create: if isVerifiedOwner(uid)
           && isValidId(uid)
@@ -278,7 +278,7 @@ service cloud.firestore {
 
       match /preferences/{prefId} {
         allow get: if isOwner(uid) && isValidId(uid) && prefId == 'settings';
-        allow list: if isOwner(uid) && resource.data.uid == request.auth.uid;
+        allow list: if isOwner(uid);
 
         allow create: if isVerifiedOwner(uid)
           && isValidId(uid)

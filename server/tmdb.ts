@@ -141,17 +141,27 @@ async function tmdbFetch<T>(
     throw new Error('TMDB_NOT_CONFIGURED');
   }
 
+  const isV3ApiKey = /^[a-f0-9]{32}$/i.test(token);
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const url = isV3ApiKey
+    ? `${TMDB_BASE_URL}${endpoint}${separator}api_key=${token}`
+    : `${TMDB_BASE_URL}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(init?.body ? { 'Content-Type': 'application/json;charset=utf-8' } : {}),
+  };
+  if (!isV3ApiKey) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const res = await fetch(`${TMDB_BASE_URL}${endpoint}`, {
+    const res = await fetch(url, {
       method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-        ...(init?.body ? { 'Content-Type': 'application/json;charset=utf-8' } : {}),
-      },
+      headers,
       body: init?.body ? JSON.stringify(init.body) : undefined,
       signal: controller.signal,
     });
