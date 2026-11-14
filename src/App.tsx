@@ -61,6 +61,12 @@ const TermsPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./pages/InfoPages').then((m) => ({ default: m.NotFoundPage }))
 );
+const MoodMatchPage = lazy(() =>
+  import('./pages/MoodMatchPage').then((m) => ({ default: m.MoodMatchPage }))
+);
+const WatchStatsPage = lazy(() =>
+  import('./pages/WatchStatsPage').then((m) => ({ default: m.WatchStatsPage }))
+);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -121,6 +127,8 @@ export default function App() {
                         <Route path="/my-list" element={<MyListPage />} />
                         <Route path="/continue-watching" element={<ContinueWatchingPage />} />
                         <Route path="/history" element={<WatchHistoryPage />} />
+                        <Route path="/mood" element={<MoodMatchPage />} />
+                        <Route path="/stats" element={<WatchStatsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

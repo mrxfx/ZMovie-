@@ -28,16 +28,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Full-Width Frosted Footer with TMDB & Jikan Attribution */}
-        <footer className="w-full min-w-0 px-3.5 sm:px-6 lg:px-10 xl:px-12 pb-4 sm:pb-6 pt-2">
-          <div className="glass-white rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-5 sm:py-7">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 sm:gap-8">
-              <div className="col-span-2 space-y-2">
+        {/* Full-Width Compact Frosted Footer */}
+        <footer className="w-full min-w-0 px-3.5 sm:px-6 lg:px-10 xl:px-12 pb-3 sm:pb-4 pt-1">
+          <div className="glass-white rounded-2xl px-4 sm:px-6 py-3.5 sm:py-4 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <Link
                   to="/"
-                  className="font-display text-lg font-extrabold tracking-tight inline-flex items-center gap-1.5"
+                  className="font-display text-base font-extrabold tracking-tight inline-flex items-center gap-1.5 shrink-0"
                 >
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-[#E50914] text-white text-xs font-black">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#E50914] text-white text-[10px] font-black">
                     Z
                   </span>
                   <span>
@@ -45,91 +45,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <span className="text-[#E50914]">Movie</span>
                   </span>
                 </Link>
-                <p className="text-xs sm:text-sm text-white/70 max-w-xl leading-relaxed">
-                  Part of the Zyvo Ecosystem. Discover trending movies, television series, and
-                  anime with synchronized watchlists and instant playback continuity.
-                </p>
-                <p className="text-[11px] text-white/50">
-                  This product uses the TMDB API but is not endorsed or certified by TMDB. Anime
-                  metadata adapter powered by MyAnimeList / Jikan API.
+                <span className="text-xs text-white/60 hidden sm:inline">·</span>
+                <p className="text-[11px] sm:text-xs text-white/65 truncate">
+                  Immersive entertainment discovery powered by Zyvo Ecosystem.
                 </p>
               </div>
 
-              <div>
-                <h3 className="font-display text-sm font-semibold text-white mb-2.5">
-                  Explore
-                </h3>
-                <ul className="space-y-1.5 text-xs sm:text-sm text-white/70">
-                  <li>
-                    <Link to="/movies" className="hover:text-white transition-colors">
-                      Movies
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/tv" className="hover:text-white transition-colors">
-                      TV Shows
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/anime" className="hover:text-white transition-colors">
-                      Anime
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/continue-watching" className="hover:text-white transition-colors">
-                      Continue Watching
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/history" className="hover:text-white transition-colors">
-                      Watch History
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-display text-sm font-semibold text-white mb-2.5">
-                  Account &amp; Legal
-                </h3>
-                <ul className="space-y-1.5 text-xs sm:text-sm text-white/70">
-                  <li>
-                    <Link to="/profile" className="hover:text-white transition-colors">
-                      Profile
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/settings" className="hover:text-white transition-colors">
-                      Settings
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/admin" className="hover:text-white transition-colors">
-                      Admin Panel
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/about" className="hover:text-white transition-colors">
-                      About ZyvoMovie
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/privacy" className="hover:text-white transition-colors">
-                      Privacy Policy
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/terms" className="hover:text-white transition-colors">
-                      Terms of Service
-                    </Link>
-                  </li>
-                </ul>
-              </div>
+              {/* Compact Inline Navigation Links */}
+              <nav aria-label="Footer Navigation" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/75 font-medium">
+                <Link to="/movies" className="hover:text-white transition-colors">Movies</Link>
+                <Link to="/tv" className="hover:text-white transition-colors">TV Shows</Link>
+                <Link to="/anime" className="hover:text-white transition-colors">Anime</Link>
+                <Link to="/my-list" className="hover:text-white transition-colors">My List</Link>
+                <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>
+                <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+              </nav>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-white/50">
-              <span>© {new Date().getFullYear()} Zyvo Ecosystem. All rights reserved.</span>
-              <span>ZyvoMovie Liquid Glass</span>
+            <div className="pt-2.5 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] text-white/50">
+              <span className="truncate">
+                This product uses the TMDB API but is not endorsed or certified by TMDB.
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                <span>&copy; {new Date().getFullYear()} Zyvo</span>
+                <span>·</span>
+                <span>Liquid Glass</span>
+              </div>
             </div>
           </div>
         </footer>

@@ -1,6 +1,6 @@
 export type MediaType = 'movie' | 'tv' | 'anime';
 
-export type CatalogSource = 'tmdb' | 'jikan' | 'admin-firestore';
+export type CatalogSource = 'tmdb' | 'jikan' | 'kitsu' | 'admin-firestore';
 
 export type VidLinkPlayerType = 'default' | 'jw';
 export type VidLinkIconsStyle = 'default' | 'vid';

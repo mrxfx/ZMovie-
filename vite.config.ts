@@ -129,6 +129,30 @@ export default defineConfig(() => {
     optimizeDeps: {
       include: ['react', 'react-dom', 'motion/react', 'react-router-dom', 'lucide-react'],
     },
+    build: {
+      target: 'esnext',
+      minify: 'esbuild',
+      sourcemap: false,
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('firebase')) {
+                return 'vendor-firebase';
+              }
+              if (id.includes('motion')) {
+                return 'vendor-motion';
+              }
+              return 'vendor-misc';
+            }
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.

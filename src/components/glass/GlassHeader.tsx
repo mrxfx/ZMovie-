@@ -13,6 +13,8 @@ const NAV_LINKS = [
   { to: '/tv', label: 'TV Shows' },
   { to: '/anime', label: 'Anime' },
   { to: '/my-list', label: 'My List' },
+  { to: '/mood', label: 'AI Mood' },
+  { to: '/stats', label: 'Stats' },
 ];
 
 export function GlassHeader() {

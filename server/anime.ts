@@ -13,6 +13,73 @@ import type {
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 const JIKAN_MIN_INTERVAL_MS = 380; // Respect Jikan v4 3 req/sec limit cleanly
+const KITSU_BASE_URL = 'https://kitsu.io/api/edge';
+
+interface KitsuRawAnime {
+  id: string;
+  attributes?: {
+    titles?: { en?: string; en_jp?: string; ja_jp?: string };
+    canonicalTitle?: string;
+    synopsis?: string;
+    posterImage?: { original?: string; large?: string; medium?: string };
+    coverImage?: { original?: string; large?: string };
+    startDate?: string;
+    averageRating?: string;
+    popularityRank?: number;
+    episodeCount?: number;
+    status?: string;
+    subtype?: string;
+  };
+}
+
+export async function fetchKitsuSearch(query: string, limit = 20): Promise<MediaSummary[]> {
+  const cacheKey = `kitsu:search:${query}:${limit}`;
+  const cached = apiCache.get<MediaSummary[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(`${KITSU_BASE_URL}/anime?filter[text]=${encodeURIComponent(query)}&page[limit]=${limit}`, {
+      headers: { Accept: 'application/vnd.api+json' },
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: KitsuRawAnime[] };
+    const items = (json.data || []).map((raw): MediaSummary => {
+      const attr = raw.attributes || {};
+      const titles = attr.titles || {};
+      const poster = attr.posterImage?.large || attr.posterImage?.original || attr.posterImage?.medium || null;
+      const releaseDate = attr.startDate || '';
+      const releaseYear = releaseDate ? releaseDate.slice(0, 4) : 'TBA';
+      const score = attr.averageRating ? Number(attr.averageRating) / 10 : 0;
+
+      return {
+        id: `kitsu_${raw.id}`,
+        mediaType: 'anime',
+        malId: Number(raw.id),
+        title: titles.en || attr.canonicalTitle || 'Untitled Anime',
+        originalTitle: titles.ja_jp || titles.en_jp || attr.canonicalTitle,
+        overview: attr.synopsis || 'No synopsis available.',
+        posterPath: poster,
+        backdropPath: attr.coverImage?.large || attr.coverImage?.original || poster,
+        releaseYear,
+        releaseDate,
+        voteAverage: Math.round(score * 10) / 10,
+        voteCount: attr.popularityRank ? 1000 - attr.popularityRank : 100,
+        popularity: attr.popularityRank ? 10000 - attr.popularityRank : 500,
+        originalLanguage: 'ja',
+        genreIds: [],
+        genres: ['Anime', attr.subtype || 'Series'],
+        episodeCount: attr.episodeCount,
+        status: attr.status,
+        source: 'kitsu',
+      };
+    });
+
+    apiCache.set(cacheKey, items, 600_000);
+    return items;
+  } catch {
+    return [];
+  }
+}
 
 interface JikanAnimeRaw {
   mal_id: number;
@@ -253,6 +320,18 @@ export async function fetchAnimeList(
       configured: true,
     };
   } catch (err) {
+    const queryText = filters.query?.trim() || category;
+    const kitsuResults = await fetchKitsuSearch(queryText, 20);
+    if (kitsuResults.length > 0) {
+      return {
+        items: kitsuResults,
+        page,
+        totalPages: 1,
+        totalResults: kitsuResults.length,
+        source: 'kitsu',
+        configured: true,
+      };
+    }
     return {
       items: [],
       page: 1,

@@ -93,3 +93,12 @@ export function mergeHistoryItems(
   }
   return Array.from(map.values()).sort((a, b) => b.watchedAtMs - a.watchedAtMs);
 }
+
+export function formatRuntime(minutes: number | null | undefined): string {
+  if (!minutes || !Number.isFinite(minutes) || minutes <= 0) return '';
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+}
